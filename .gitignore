@@ -1,0 +1,33 @@
+# Node
+node_modules/
+.npm/
+.pnpm-store/
+package-lock.json
+
+# Expo
+.expo/
+.expo-shared/
+web-build/
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+*.expo*
+.env
+.env.*
+
+

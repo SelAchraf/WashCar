@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "WashCar",
+    "slug": "washcar",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "splash": {
+      "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/",
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {},
+    "web": {
+      "bundler": "metro"
+    },
+    "scheme": "washcar",
+    "sdkVersion": "51.0.0",
+    "primaryColor": "#1E40AF"
+  }
+}
+
+

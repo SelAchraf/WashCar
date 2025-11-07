@@ -1,0 +1,4 @@
+Placeholders for icons/images.
+Add icon.png, adaptive-icon.png, favicon.png as needed.
+
+

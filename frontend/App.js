@@ -1,46 +1,78 @@
 import React from 'react';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StatusBar, Platform, Pressable, View, Text, StyleSheet } from 'react-native';
+import { StatusBar, Platform, Pressable, View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import SplashScreen from './src/screens/SplashScreen.jsx';
+import LoginScreen from './src/screens/LoginScreen.jsx';
 import HomeScreen from './src/screens/HomeScreen.jsx';
 import BookingScreen from './src/screens/BookingScreen.jsx';
 import ConfirmationScreen from './src/screens/ConfirmationScreen.jsx';
 import MesReservationsScreen from './src/screens/MesReservationsScreen.jsx';
 import MonCompteScreen from './src/screens/MonCompteScreen.jsx';
+import { AuthProvider, useAuth } from './src/context/AuthContext.jsx';
 import { BookingProvider } from './src/context/BookingContext.jsx';
 import { DrawerProvider, useDrawer } from './src/components/DrawerProvider.jsx';
 
 const Stack = createNativeStackNavigator();
 
+function AppNavigator() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff' }}>
+        <ActivityIndicator size="large" color="#1E40AF" />
+      </View>
+    );
+  }
+
+  // Use key to force NavigationContainer remount when auth state changes
+  // This ensures clean navigation state transition between authenticated/unauthenticated
+  return (
+    <NavigationContainer key={user ? 'authenticated' : 'unauthenticated'}>
+      <DrawerProvider>
+        <StatusBar barStyle="light-content" />
+        <Stack.Navigator
+          initialRouteName={user ? "Home" : "Login"}
+          screenOptions={{
+            headerShown: true,
+            headerTintColor: '#ffffff',
+            headerTitleStyle: { fontWeight: '700' },
+            header: (props) => <CustomHeader {...props} />,
+          }}
+        >
+          {user ? (
+            // Authenticated screens
+            <>
+              <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Accueil', headerLeft: () => <MenuButton /> }} />
+              <Stack.Screen name="Reservations" component={MesReservationsScreen} options={{ title: 'Mes Réservations', headerLeft: () => <MenuButton /> }} />
+              <Stack.Screen name="Account" component={MonCompteScreen} options={{ title: 'Mon Compte', headerLeft: () => <MenuButton /> }} />
+              <Stack.Screen name="Booking" component={BookingScreen} options={{ title: 'Réserver' }} />
+              <Stack.Screen name="Confirmation" component={ConfirmationScreen} options={{ title: 'Confirmation' }} />
+            </>
+          ) : (
+            // Unauthenticated screens
+            <>
+              <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+            </>
+          )}
+        </Stack.Navigator>
+      </DrawerProvider>
+    </NavigationContainer>
+  );
+}
+
 export default function App() {
   return (
-    <BookingProvider>
-      <NavigationContainer>
-        <DrawerProvider>
-          <StatusBar barStyle="light-content" />
-          <Stack.Navigator
-        initialRouteName="Splash"
-        screenOptions={{
-          headerShown: true,
-          headerTintColor: '#ffffff',
-          headerTitleStyle: { fontWeight: '700' },
-          header: (props) => <CustomHeader {...props} />,
-        }}
-          >
-            <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Accueil', headerLeft: () => <MenuButton /> }} />
-            <Stack.Screen name="Reservations" component={MesReservationsScreen} options={{ title: 'Mes Réservations', headerLeft: () => <MenuButton /> }} />
-            <Stack.Screen name="Account" component={MonCompteScreen} options={{ title: 'Mon Compte', headerLeft: () => <MenuButton /> }} />
-            <Stack.Screen name="Booking" component={BookingScreen} options={{ title: 'Réserver' }} />
-            <Stack.Screen name="Confirmation" component={ConfirmationScreen} options={{ title: 'Confirmation' }} />
-          </Stack.Navigator>
-        </DrawerProvider>
-      </NavigationContainer>
-    </BookingProvider>
+    <AuthProvider>
+      <BookingProvider>
+        <AppNavigator />
+      </BookingProvider>
+    </AuthProvider>
   );
 }
 

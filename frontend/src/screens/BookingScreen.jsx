@@ -5,7 +5,6 @@ import { formatDA } from '../utils/format.js';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { TIME_SLOTS } from '../data/services.js';
 import Button from '../components/Button.jsx';
-import { saveBooking } from '../utils/storage.js';
 import { useBooking } from '../context/BookingContext.jsx';
 
 export default function BookingScreen({ route, navigation }) {
@@ -83,9 +82,13 @@ export default function BookingScreen({ route, navigation }) {
       status: 'Confirmée',
       createdAt: new Date().toISOString(),
     };
-    await saveBooking(booking);
-    await addBooking(booking);
-    navigation.reset({ index: 1, routes: [{ name: 'Home' }, { name: 'Reservations' }] });
+    try {
+      await addBooking(booking);
+      navigation.reset({ index: 1, routes: [{ name: 'Home' }, { name: 'Reservations' }] });
+    } catch (error) {
+      setError('Erreur lors de l\'enregistrement de la réservation');
+      console.error('Booking error:', error);
+    }
   };
 
   return (
@@ -143,7 +146,7 @@ export default function BookingScreen({ route, navigation }) {
         <Button title="Confirmer" onPress={handleConfirm} />
 
         <Text style={styles.hint}>
-          Astuce: les données sont enregistrées localement (mode hors-ligne simulé).
+          Astuce: vos réservations sont sauvegardées en ligne et accessibles sur tous vos appareils.
         </Text>
       </View>
     </SafeAreaView>

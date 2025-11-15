@@ -1,6 +1,5 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyABdMrOGMcISg-df1ITrgDUH1c2x1pBzoQ",
@@ -15,11 +14,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Authentication and get a reference to the service
-export const auth = getAuth(app);
-
-// Initialize Cloud Firestore and get a reference to the service
-export const db = getFirestore(app);
-
+// Note: Firestore access is handled server-side by the backend now.
+// The frontend keeps Firebase Authentication for sign-in and ID tokens.
 export default app;
 
+// Initialize Firebase Authentication and export auth (kept for client-side signin)
+export const auth = getAuth(app);

@@ -33,13 +33,14 @@ npx expo start
 Voir `frontend/FIREBASE_SETUP.md` pour les instructions détaillées.
 
 ## Structure
-- `frontend/`: Application Expo (iOS/Android) avec intégration Firebase
-- `backend/`: Non utilisé - Firebase remplace le backend
+## Structure
+- `frontend/`: Application Expo (iOS/Android) avec Firebase for auth and client-side logic
+- `backend/`: Node/Express API (uses `firebase-admin`) that provides server-side helpers, admin endpoints and token verification
 
 ## Dépendances clés
-- Expo SDK 51, React Native 0.75.x, React 18.3.x
-- React Navigation (stack), DateTimePicker
-- **Firebase** (Authentication et Firestore)
+- ✅ Panel d'administration (via `backend/`) pour confirmer / annuler réservations et gérer les services
+- ✅ Système de statut pour les réservations : `En attente`, `Confirmée`, `Annulée` (affichage couleur)
+- ✅ Les réservations stockent maintenant `phone` et `price` (si disponible) côté booking/service
 
 ## Fonctionnalités
 

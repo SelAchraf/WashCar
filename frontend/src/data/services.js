@@ -1,8 +1,8 @@
 export const SERVICES = [
-  { id: 'ext', title: 'Lavage Extérieur', description: 'Nettoyage carrosserie', price: 1500 },
-  { id: 'int', title: 'Lavage Intérieur', description: 'Aspirateur et surfaces', price: 2000 },
-  { id: 'full', title: 'Lavage Complet', description: 'Intérieur + Extérieur', price: 3500 },
-  { id: 'wax', title: 'Cire', description: 'Protection et brillance', price: 4000 },
+  { id: 'ext', name: 'Lavage Extérieur', description: 'Nettoyage carrosserie', price: 1500 },
+  { id: 'int', name: 'Lavage Intérieur', description: 'Aspirateur et surfaces', price: 2000 },
+  { id: 'full', name: 'Lavage Complet', description: 'Intérieur + Extérieur', price: 3500 },
+  { id: 'wax', name: 'Cire', description: 'Protection et brillance', price: 4000 },
 ];
 
 export const TIME_SLOTS = [

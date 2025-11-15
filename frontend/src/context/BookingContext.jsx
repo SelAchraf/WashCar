@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
-import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, orderBy } from 'firebase/firestore';
-import { db } from '../config/firebase';
 import { useAuth } from './AuthContext';
+
+// Backend URL - can be overridden by setting global.BACKEND_URL in the app environment
+const BACKEND_URL = (global && global.BACKEND_URL) || 'http://localhost:4000';
 
 const BookingContext = createContext(null);
 
@@ -19,73 +20,37 @@ export function BookingProvider({ children }) {
       return;
     }
 
-    // If user exists, set up the listener
-    setLoading(true);
-    let unsubscribe = null;
+    // If user exists, fetch bookings from backend API
     let isMounted = true;
+    setLoading(true);
 
-    try {
-      const bookingsRef = collection(db, 'bookings');
-      const q = query(
-        bookingsRef,
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      );
-
-      unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          // Only update state if component is still mounted and user is still logged in
-          if (!isMounted) return;
-          
-          const bookingsData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setBookings(bookingsData);
+    (async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`${BACKEND_URL}/api/bookings`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!isMounted) return;
+        if (!res.ok) {
+          console.error('Failed to load bookings from backend', await res.text());
+          setBookings([]);
           setLoading(false);
-        },
-        (error) => {
-          // Ignore errors that occur during logout or connection termination
-          // These are normal when user logs out and Firebase closes the connection
-          if (
-            error.code === 'cancelled' || 
-            error.code === 'unavailable' ||
-            error.message?.includes('terminate') ||
-            error.message?.includes('Listen channel') ||
-            error.message?.includes('Bad Request')
-          ) {
-            // Silently ignore connection termination errors during logout
-            return;
-          }
-          // Only log other errors if component is still mounted and user is still logged in
-          if (isMounted && user) {
-            console.error('Error loading bookings:', error);
-            setLoading(false);
-          }
+          return;
         }
-      );
-    } catch (error) {
-      if (isMounted) {
-        console.error('Error setting up bookings listener:', error);
+        const data = await res.json();
+        setBookings(data);
         setLoading(false);
+      } catch (error) {
+        if (isMounted) {
+          console.error('Error loading bookings from backend:', error);
+          setBookings([]);
+          setLoading(false);
+        }
       }
-    }
+    })();
 
-    // Cleanup function - called when user logs out or component unmounts
     return () => {
       isMounted = false;
-      if (unsubscribe) {
-        try {
-          // Unsubscribe from Firestore listener
-          // This may cause a network error if connection is already closed, which is normal
-          unsubscribe();
-        } catch (error) {
-          // Silently ignore cleanup errors - they're expected during logout
-          // The connection may already be closed by Firebase
-        }
-      }
-      // Clear bookings immediately when cleaning up
       setBookings([]);
       setLoading(false);
     };
@@ -95,14 +60,28 @@ export function BookingProvider({ children }) {
     if (!user) {
       throw new Error('User must be logged in to add a booking');
     }
-
     try {
+      const token = await user.getIdToken();
       const bookingData = {
         ...booking,
-        userId: user.uid,
         createdAt: new Date().toISOString(),
       };
-      await addDoc(collection(db, 'bookings'), bookingData);
+      const res = await fetch(`${BACKEND_URL}/api/bookings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(bookingData),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to add booking: ${text}`);
+      }
+      const newBooking = await res.json();
+      // Update local state immediately with the new booking
+      setBookings(prevBookings => [newBooking, ...prevBookings]);
+      return newBooking;
     } catch (error) {
       console.error('Error adding booking:', error);
       throw error;
@@ -113,13 +92,29 @@ export function BookingProvider({ children }) {
     if (!user) {
       throw new Error('User must be logged in to update a booking');
     }
-
     try {
-      const bookingRef = doc(db, 'bookings', id);
-      const updates = typeof updater === 'function' 
-        ? updater(bookings.find(b => b.id === id))
+      const token = await user.getIdToken();
+      const currentBooking = bookings.find(b => b.id === id);
+      const updates = typeof updater === 'function'
+        ? updater(currentBooking)
         : updater;
-      await updateDoc(bookingRef, updates);
+      const res = await fetch(`${BACKEND_URL}/api/bookings/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Failed to update booking: ${text}`);
+      }
+      // Update local state immediately
+      setBookings(prevBookings =>
+        prevBookings.map(b => b.id === id ? { ...b, ...updates } : b)
+      );
+      return { success: true };
     } catch (error) {
       console.error('Error updating booking:', error);
       throw error;

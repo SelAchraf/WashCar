@@ -152,11 +152,27 @@ const firebaseConfig = {
 - Path: `bookings/{bookingId}`
 - Fields:
   - `userId` (string) - Reference to the user who created the booking
-  - `service` (object) - Service details
-  - `date` (string) - ISO date string
-  - `slot` (object) - Time slot details
+  - `service` (object) - Service details (may include `name` and `price`)
+  - `price` (number, optional) - price in DA; may be present either in `service.price` or directly on the booking as `price`
+  - `date` (string) - ISO date string (e.g. `2025-11-15T10:32:36.043Z`)
+  - `slot` (object) - Time slot details (e.g. `{ id, label }`)
   - `address` (string)
   - `phone` (string)
-  - `status` (string) - e.g., "Confirmée", "Annulée"
+  - `status` (string) - one of: `En attente`, `Confirmée`, `Annulée`
   - `createdAt` (string) - ISO timestamp
+
+### Services Collection
+- Path: `services/{serviceId}`
+- Fields:
+  - `name` (string)
+  - `description` (string)
+  - `price` (number)
+  - `createdAt` (string)
+
+### Admin role / backend notes
+- Admin checks in the backend look for a `role` field on the user's document (e.g. `users/{uid}.role === 'admin'`). To grant a user admin privileges, set that field manually in Firestore for now.
+- The backend exposes admin endpoints (under `/api/admin/*`) and verifies the calling user's ID token and role server-side. Admin endpoints are the right way to perform privileged actions (confirm/cancel bookings, manage services) instead of opening broader Firestore rules to clients.
+
+### Booking ID notes
+- New bookings use Firestore auto-generated document ids. Older bookings created by the app may include a legacy custom `id` field (e.g. a timestamp string). The backend includes a fallback to locate bookings by that custom `id` when processing admin updates/deletes.
 

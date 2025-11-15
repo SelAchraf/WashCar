@@ -6,8 +6,10 @@ import {
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../config/firebase';
+import { auth } from '../config/firebase';
+
+// Backend URL - can be overridden by setting global.BACKEND_URL in the app environment
+const BACKEND_URL = (global && global.BACKEND_URL) || 'http://localhost:4000';
 
 const AuthContext = createContext(null);
 
@@ -20,13 +22,17 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        // Fetch user profile from Firestore
+        // Fetch user profile from backend
         try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (userDoc.exists()) {
-            setUserProfile(userDoc.data());
-          } else {
-            // Create user profile if it doesn't exist
+          const token = await firebaseUser.getIdToken();
+          const res = await fetch(`${BACKEND_URL}/api/users/${firebaseUser.uid}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const profile = await res.json();
+            setUserProfile(profile);
+          } else if (res.status === 404) {
+            // create default profile via backend
             const defaultProfile = {
               name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
               email: firebaseUser.email,
@@ -34,8 +40,17 @@ export function AuthProvider({ children }) {
               address: '',
               createdAt: new Date().toISOString(),
             };
-            await setDoc(doc(db, 'users', firebaseUser.uid), defaultProfile);
+            await fetch(`${BACKEND_URL}/api/users/${firebaseUser.uid}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(defaultProfile),
+            });
             setUserProfile(defaultProfile);
+          } else {
+            console.error('Failed to fetch user profile from backend', await res.text());
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
@@ -66,8 +81,21 @@ export function AuthProvider({ children }) {
         address: '',
         createdAt: new Date().toISOString(),
       };
-      await setDoc(doc(db, 'users', firebaseUser.uid), userProfile);
-      
+
+      try {
+        const token = await firebaseUser.getIdToken();
+        await fetch(`${BACKEND_URL}/api/users/${firebaseUser.uid}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(userProfile),
+        });
+      } catch (e) {
+        console.warn('Failed to create user profile on backend:', e);
+      }
+
       return { success: true };
     } catch (error) {
       console.error('Sign up error:', error);
@@ -134,7 +162,19 @@ export function AuthProvider({ children }) {
     if (!user) return { success: false, error: 'No user logged in' };
     
     try {
-      await setDoc(doc(db, 'users', user.uid), profileData, { merge: true });
+      const token = await user.getIdToken();
+      const res = await fetch(`${BACKEND_URL}/api/users/${user.uid}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(profileData),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Failed to update profile');
+      }
       setUserProfile(profileData);
       return { success: true };
     } catch (error) {

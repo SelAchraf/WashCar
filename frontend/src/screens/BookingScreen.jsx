@@ -73,13 +73,12 @@ export default function BookingScreen({ route, navigation }) {
       return;
     }
     const booking = {
-      id: `${Date.now()}`,
       service,
       date: date.toISOString(),
       slot,
       address,
       phone,
-      status: 'Confirmée',
+      status: 'En attente',
       createdAt: new Date().toISOString(),
     };
     try {
@@ -95,7 +94,7 @@ export default function BookingScreen({ route, navigation }) {
     <SafeAreaView style={styles.container}>
       <View style={styles.headerSpace} />
       <View style={styles.headerInline}>
-        <Text style={styles.headerTitle}>{service?.title}</Text>
+  <Text style={styles.headerTitle}>{service?.name}</Text>
         <Text style={styles.headerPrice}>{formatDA(service?.price ?? 0)}</Text>
       </View>
       <View style={styles.content}>

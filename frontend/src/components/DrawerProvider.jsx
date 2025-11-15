@@ -54,7 +54,7 @@ function DrawerContent({ anim, onClose }) {
 function DrawerInner({ onNavigate }) {
   const nav = useNavigation();
   const { profile } = useBooking();
-  const { logout } = useAuth();
+  const { logout, userProfile } = useAuth();
   
   const entries = [
     { key: 'Home', label: 'Accueil' },
@@ -113,26 +113,31 @@ function DrawerInner({ onNavigate }) {
     }
   };
 
+  // If user is admin, don't show menu items (admin only sees admin screen)
+  const isAdmin = userProfile && userProfile.role === 'admin';
+
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.header}>
         <Image source={{ uri: 'https://i.pravatar.cc/100' }} style={styles.avatar} />
-        <Text style={styles.name}>{profile.name}</Text>
-        <Text style={styles.email}>{profile.email}</Text>
+        <Text style={styles.name}>{profile.name || userProfile?.name || 'Admin'}</Text>
+        <Text style={styles.email}>{profile.email || userProfile?.email || ''}</Text>
       </View>
-      <View style={{ paddingVertical: 8 }}>
-        {entries.map((e) => {
-          const current = typeof nav.getCurrentRoute === 'function' ? nav.getCurrentRoute() : null;
-          const active = current?.name === e.key;
-          return (
-            <Pressable key={e.key} onPress={() => { nav.navigate(e.key); onNavigate(); }}
-              style={[styles.item, active ? styles.itemActive : null]}
-            >
-              <Text style={[styles.itemText, active ? styles.itemTextActive : null]}>{e.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {!isAdmin && (
+        <View style={{ paddingVertical: 8 }}>
+          {entries.map((e) => {
+            const current = typeof nav.getCurrentRoute === 'function' ? nav.getCurrentRoute() : null;
+            const active = current?.name === e.key;
+            return (
+              <Pressable key={e.key} onPress={() => { nav.navigate(e.key); onNavigate(); }}
+                style={[styles.item, active ? styles.itemActive : null]}
+              >
+                <Text style={[styles.itemText, active ? styles.itemTextActive : null]}>{e.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
       <View style={{ marginTop: 'auto', padding: 16 }}>
         <Pressable 
           onPress={handleLogout} 

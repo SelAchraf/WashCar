@@ -15,7 +15,7 @@ export default function ConfirmationScreen({ route, navigation }) {
         <Text style={styles.success}>Réservation confirmée! Un laveur vous contactera bientôt.</Text>
         {booking && (
           <View style={styles.card}>
-            <Text style={styles.itemTitle}>{booking.service.title} • {formatDA(booking.service.price)}</Text>
+            <Text style={styles.itemTitle}>{booking.service.name} • {formatDA(booking.service.price)}</Text>
             <Text style={styles.itemText}>Date: {formattedDate}</Text>
             <Text style={styles.itemText}>Créneau: {booking.slot.label}</Text>
             <Text style={styles.itemText}>Adresse: {booking.address}</Text>

@@ -1,14 +1,77 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, Alert, Platform } from 'react-native';
 import { useBooking } from '../context/BookingContext.jsx';
+import { useAuth } from '../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 
 export default function MonCompteScreen() {
   const { profile, saveProfile } = useBooking();
+  const { logout } = useAuth();
+  const navigation = useNavigation();
   const [editOpen, setEditOpen] = useState(false);
   const [form, setForm] = useState(profile);
 
   const open = () => { setForm(profile); setEditOpen(true); };
-  const onSave = async () => { await saveProfile(form); setEditOpen(false); };
+  const onSave = async () => {
+    try {
+      await saveProfile(form);
+      setEditOpen(false);
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de sauvegarder le profil');
+    }
+  };
+
+  const handleLogout = async () => {
+    console.log('Logout button clicked (MonCompte)');
+    
+    // For web, use confirm dialog, for mobile use Alert
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Êtes-vous sûr de vouloir vous déconnecter ?');
+      if (!confirmed) {
+        console.log('Logout cancelled');
+        return;
+      }
+    } else {
+      Alert.alert(
+        'Déconnexion',
+        'Êtes-vous sûr de vouloir vous déconnecter ?',
+        [
+          { text: 'Annuler', style: 'cancel', onPress: () => console.log('Logout cancelled') },
+          {
+            text: 'Déconnexion',
+            style: 'destructive',
+            onPress: async () => {
+              console.log('Logout confirmed, starting logout...');
+              try {
+                const result = await logout();
+                console.log('Logout result:', result);
+                if (!result.success) {
+                  Alert.alert('Erreur', 'Impossible de se déconnecter');
+                }
+              } catch (error) {
+                console.error('Logout error:', error);
+                Alert.alert('Erreur', 'Une erreur est survenue lors de la déconnexion');
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+    
+    // Web logout flow
+    console.log('Starting logout (web)...');
+    try {
+      const result = await logout();
+      console.log('Logout result:', result);
+      if (!result.success) {
+        alert('Erreur: Impossible de se déconnecter');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      alert('Erreur: Une erreur est survenue lors de la déconnexion');
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -34,6 +97,18 @@ export default function MonCompteScreen() {
           </View>
         </View>
       ) : null}
+
+      <Pressable 
+        style={({ pressed }) => [
+          styles.btn, 
+          styles.logoutBtn,
+          pressed && { opacity: 0.7 }
+        ]} 
+        onPress={handleLogout}
+        testID="logout-button-account"
+      >
+        <Text style={styles.logoutText}>Se déconnecter</Text>
+      </Pressable>
     </View>
   );
 }
@@ -49,6 +124,8 @@ const styles = StyleSheet.create({
   modalCard: { backgroundColor: '#ffffff', borderRadius: 12, padding: 16 },
   modalTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, padding: 10, marginTop: 8 },
+  logoutBtn: { marginTop: 24, backgroundColor: '#dc2626' },
+  logoutText: { color: '#ffffff', fontWeight: '600' },
 });
 
 

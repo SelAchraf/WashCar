@@ -1,0 +1,304 @@
+const express = require("express");
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const { admin, db } = require("./firebaseAdmin");
+
+// Helpful startup logs for debugging credential/project issues
+try {
+  console.log(
+    "GOOGLE_APPLICATION_CREDENTIALS=",
+    process.env.GOOGLE_APPLICATION_CREDENTIALS || "not set"
+  );
+  const projectId =
+    admin?.app?.()?.options?.projectId ||
+    admin?.app?.()?.options?.projectId ||
+    "unknown";
+  console.log("firebase-admin projectId=", projectId);
+} catch (e) {
+  // ignore - admin may not be initialized if firebaseAdmin exited earlier
+}
+
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
+
+const PORT = process.env.PORT || 4000;
+
+// Middleware to verify Firebase ID Token
+async function verifyToken(req, res, next) {
+  const authHeader = req.headers.authorization || "";
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!match)
+    return res
+      .status(401)
+      .json({ error: "Missing or malformed Authorization header" });
+  const idToken = match[1];
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    console.error("Error verifying ID token:", err);
+    return res.status(401).json({ error: "Invalid ID token" });
+  }
+}
+
+// Bookings: create, list, update (user-scoped)
+app.get("/api/bookings", verifyToken, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const bookingsRef = db.collection("bookings");
+    const snapshot = await bookingsRef
+      .where("userId", "==", uid)
+      .orderBy("createdAt", "desc")
+      .get();
+    const bookings = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    res.json(bookings);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load bookings" });
+  }
+});
+
+app.post("/api/bookings", verifyToken, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const data = req.body || {};
+    // Remove any id field from the request (if present)
+    const { id, ...cleanData } = data;
+    // Try to attach the user's name to the booking so admin UI can display it without extra lookups
+    let clientName = '';
+    try {
+      const userDoc = await db.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        const p = userDoc.data();
+        clientName = p.name || p.email || '';
+      }
+    } catch (e) {
+      console.warn('Could not fetch user profile for booking creation:', e?.message || e);
+    }
+
+    const bookingData = {
+      ...cleanData,
+      userId: uid,
+      clientName,
+      createdAt: data.createdAt || new Date().toISOString(),
+    };
+    const ref = await db.collection("bookings").add(bookingData);
+    const responseData = { id: ref.id, ...bookingData };
+    res.status(201).json(responseData);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to create booking" });
+  }
+});
+
+app.put("/api/bookings/:id", verifyToken, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const id = req.params.id;
+    const docRef = db.collection("bookings").doc(id);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists)
+      return res.status(404).json({ error: "Booking not found" });
+    const docData = docSnap.data();
+    if (docData.userId !== uid)
+      return res.status(403).json({ error: "Forbidden" });
+    await docRef.update(req.body || {});
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update booking" });
+  }
+});
+
+// Admin routes (requires user role 'admin')
+async function isAdmin(req, res, next) {
+  try {
+    const uid = req.user?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists) return res.status(403).json({ error: 'Forbidden' });
+    const profile = userDoc.data();
+    if (profile.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+    next();
+  } catch (err) {
+    console.error('isAdmin check failed:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+app.get('/api/admin/bookings', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const snapshot = await db.collection('bookings').orderBy('createdAt', 'desc').get();
+    const bookings = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    res.json(bookings);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load bookings' });
+  }
+});
+
+app.put('/api/admin/bookings/:id', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const docRef = db.collection('bookings').doc(id);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) {
+      // Try to find booking by the custom id field
+      const query = await db.collection('bookings').where('id', '==', id).get();
+      if (!query.empty) {
+        // Found it! Use the actual document ID
+        const actualDocId = query.docs[0].id;
+        const actualDocRef = db.collection('bookings').doc(actualDocId);
+        await actualDocRef.update(req.body || {});
+        return res.json({ success: true });
+      }
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    await docRef.update(req.body || {});
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update booking' });
+  }
+});
+
+app.delete('/api/admin/bookings/:id', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const docRef = db.collection('bookings').doc(id);
+    const docSnap = await docRef.get();
+    
+    if (!docSnap.exists) {
+      // Try to find booking by the custom id field
+      const query = await db.collection('bookings').where('id', '==', id).get();
+      if (!query.empty) {
+        const actualDocId = query.docs[0].id;
+        await db.collection('bookings').doc(actualDocId).delete();
+        return res.json({ success: true });
+      }
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    await docRef.delete();
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete booking' });
+  }
+});
+
+// Services management (admin-only)
+app.get('/api/admin/services', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const snapshot = await db.collection('services').orderBy('name').get();
+    const services = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    res.json(services);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load services' });
+  }
+});
+
+// Public services listing (clients read available services)
+app.get('/api/services', async (req, res) => {
+  try {
+    const snapshot = await db.collection('services').orderBy('name').get();
+    const services = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    res.json(services);
+  } catch (err) {
+    console.error('Failed to load public services:', err);
+    res.status(500).json({ error: 'Failed to load services' });
+  }
+});
+
+app.post('/api/admin/services', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const data = req.body || {};
+    if (!data.name) return res.status(400).json({ error: 'Name is required' });
+    const serviceData = {
+      name: data.name,
+      description: data.description || '',
+      price: data.price || 0,
+      createdAt: new Date().toISOString(),
+    };
+    const ref = await db.collection('services').add(serviceData);
+    res.status(201).json({ id: ref.id, ...serviceData });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create service' });
+  }
+});
+
+app.put('/api/admin/services/:id', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const docRef = db.collection('services').doc(id);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) return res.status(404).json({ error: 'Service not found' });
+    await docRef.update(req.body || {});
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update service' });
+  }
+});
+
+app.delete('/api/admin/services/:id', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const docRef = db.collection('services').doc(id);
+    await docRef.delete();
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete service' });
+  }
+});
+
+// Users profile endpoints
+app.get("/api/users/:uid", verifyToken, async (req, res) => {
+  try {
+    const uidParam = req.params.uid;
+    const currentUid = req.user.uid;
+    
+    // Allow users to view their own profile, or allow admins to view any profile
+    if (uidParam !== currentUid) {
+      // Check if the current user is an admin
+      const adminDoc = await db.collection("users").doc(currentUid).get();
+      if (!adminDoc.exists || adminDoc.data().role !== "admin") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+    }
+    
+    const doc = await db.collection("users").doc(uidParam).get();
+    if (!doc.exists)
+      return res.status(404).json({ error: "User profile not found" });
+    res.json(doc.data());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch user profile" });
+  }
+});
+
+app.put("/api/users/:uid", verifyToken, async (req, res) => {
+  try {
+    const uidParam = req.params.uid;
+    if (uidParam !== req.user.uid)
+      return res.status(403).json({ error: "Forbidden" });
+    const data = req.body || {};
+    await db.collection("users").doc(uidParam).set(data, { merge: true });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update user profile" });
+  }
+});
+
+app.get("/", (req, res) => res.send("WashCar backend running"));
+
+app.listen(PORT, () => {
+  console.log(`WashCar backend listening on port ${PORT}`);
+});

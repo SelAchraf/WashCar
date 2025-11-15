@@ -1,7 +1,8 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, Pressable, StyleSheet, View, Text, Image, Platform } from 'react-native';
+import { Animated, Dimensions, Pressable, StyleSheet, View, Text, Image, Platform, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useBooking } from '../context/BookingContext.jsx';
+import { useAuth } from '../context/AuthContext';
 
 const DrawerCtx = createContext(null);
 
@@ -53,33 +54,99 @@ function DrawerContent({ anim, onClose }) {
 function DrawerInner({ onNavigate }) {
   const nav = useNavigation();
   const { profile } = useBooking();
+  const { logout, userProfile } = useAuth();
+  
   const entries = [
     { key: 'Home', label: 'Accueil' },
     { key: 'Reservations', label: 'Mes Réservations' },
     { key: 'Account', label: 'Mon Compte' },
   ];
+
+  const handleLogout = async () => {
+    console.log('Logout button clicked');
+    
+    // For web, use confirm dialog, for mobile use Alert
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Êtes-vous sûr de vouloir vous déconnecter ?');
+      if (!confirmed) return;
+    } else {
+      Alert.alert(
+        'Déconnexion',
+        'Êtes-vous sûr de vouloir vous déconnecter ?',
+        [
+          { text: 'Annuler', style: 'cancel', onPress: () => console.log('Logout cancelled') },
+          {
+            text: 'Déconnexion',
+            style: 'destructive',
+            onPress: async () => {
+              console.log('Logout confirmed, starting logout...');
+              onNavigate(); // Close drawer first
+              try {
+                const result = await logout();
+                console.log('Logout result:', result);
+                if (!result.success) {
+                  Alert.alert('Erreur', 'Impossible de se déconnecter');
+                }
+              } catch (error) {
+                console.error('Logout error:', error);
+                Alert.alert('Erreur', 'Une erreur est survenue lors de la déconnexion');
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+    
+    // Web logout flow
+    console.log('Starting logout (web)...');
+    onNavigate(); // Close drawer first
+    try {
+      const result = await logout();
+      console.log('Logout result:', result);
+      if (!result.success) {
+        alert('Erreur: Impossible de se déconnecter');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      alert('Erreur: Une erreur est survenue lors de la déconnexion');
+    }
+  };
+
+  // If user is admin, don't show menu items (admin only sees admin screen)
+  const isAdmin = userProfile && userProfile.role === 'admin';
+
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.header}>
         <Image source={{ uri: 'https://i.pravatar.cc/100' }} style={styles.avatar} />
-        <Text style={styles.name}>{profile.name}</Text>
-        <Text style={styles.email}>{profile.email}</Text>
+        <Text style={styles.name}>{profile.name || userProfile?.name || 'Admin'}</Text>
+        <Text style={styles.email}>{profile.email || userProfile?.email || ''}</Text>
       </View>
-      <View style={{ paddingVertical: 8 }}>
-        {entries.map((e) => {
-          const current = typeof nav.getCurrentRoute === 'function' ? nav.getCurrentRoute() : null;
-          const active = current?.name === e.key;
-          return (
-            <Pressable key={e.key} onPress={() => { nav.navigate(e.key); onNavigate(); }}
-              style={[styles.item, active ? styles.itemActive : null]}
-            >
-              <Text style={[styles.itemText, active ? styles.itemTextActive : null]}>{e.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {!isAdmin && (
+        <View style={{ paddingVertical: 8 }}>
+          {entries.map((e) => {
+            const current = typeof nav.getCurrentRoute === 'function' ? nav.getCurrentRoute() : null;
+            const active = current?.name === e.key;
+            return (
+              <Pressable key={e.key} onPress={() => { nav.navigate(e.key); onNavigate(); }}
+                style={[styles.item, active ? styles.itemActive : null]}
+              >
+                <Text style={[styles.itemText, active ? styles.itemTextActive : null]}>{e.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
       <View style={{ marginTop: 'auto', padding: 16 }}>
-        <Pressable onPress={onNavigate} style={[styles.logout]}>
+        <Pressable 
+          onPress={handleLogout} 
+          style={({ pressed }) => [
+            styles.logout,
+            pressed && { opacity: 0.7 }
+          ]}
+          testID="logout-button"
+        >
           <Text style={styles.logoutText}>Déconnexion</Text>
         </Pressable>
       </View>
@@ -108,8 +175,8 @@ const styles = StyleSheet.create({
   itemActive: { backgroundColor: '#eff6ff' },
   itemText: { color: '#111827', fontSize: 16 },
   itemTextActive: { color: '#1E40AF', fontWeight: '700' },
-  logout: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  logoutText: { color: '#111827', fontWeight: '600' },
+  logout: { backgroundColor: '#dc2626', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  logoutText: { color: '#ffffff', fontWeight: '600', fontSize: 16 },
 });
 
 

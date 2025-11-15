@@ -5,12 +5,13 @@ import { formatDA } from '../utils/format.js';
 
 function StatusBadge({ status }) {
   const map = {
-    'Confirmée': { bg: '#ecfeff', text: '#0369a1' },
+    'En attente': { bg: '#fef3c7', text: '#92400e' },      // Yellow for pending
+    'Confirmée': { bg: '#d1fae5', text: '#065f46' },        // Green for confirmed
+    'Annulée': { bg: '#fee2e2', text: '#991b1b' },          // Red for cancelled
     'En cours': { bg: '#fffbeb', text: '#92400e' },
     'Terminée': { bg: '#ecfdf5', text: '#065f46' },
-    'Annulée': { bg: '#fef2f2', text: '#991b1b' },
   };
-  const c = map[status] || map['Confirmée'];
+  const c = map[status] || map['En attente'];
   return (
     <View style={[styles.badge, { backgroundColor: c.bg }]}>
       <Text style={{ color: c.text, fontWeight: '600' }}>{status}</Text>
@@ -30,16 +31,16 @@ export default function MesReservationsScreen() {
 
   const renderItem = ({ item }) => {
     const canCancel = item.status === 'Confirmée' && new Date(item.date) > now;
-    const d = new Date(item.date).toLocaleDateString();
+    const d = new Date(item.date).toLocaleDateString('fr-FR');
     return (
       <View style={styles.card}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text style={styles.title}>{item.service.title}</Text>
+          <Text style={styles.title}>{item.service.name || item.service}</Text>
           <StatusBadge status={item.status} />
         </View>
-        <Text style={styles.sub}>Date: {d} • {item.slot.label}</Text>
+        <Text style={styles.sub}>Date: {d} • {item.slot?.label || item.slot}</Text>
         <Text style={styles.sub}>Adresse: {item.address}</Text>
-        <Text style={styles.price}>{formatDA(item.service.price)}</Text>
+        <Text style={styles.price}>{formatDA(item.service.price || 0)}</Text>
         {canCancel && (
           <Pressable onPress={() => cancelBooking(item.id)} style={styles.cancelBtn}>
             <Text style={styles.cancelText}>Annuler</Text>

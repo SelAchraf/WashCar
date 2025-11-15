@@ -1,21 +1,54 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SERVICES } from '../data/services.js';
+import { SERVICES as FALLBACK_SERVICES } from '../data/services.js';
 import ServiceCard from '../components/ServiceCard.jsx';
 
+const BACKEND_URL = (global && global.BACKEND_URL) || 'http://localhost:4000';
+
 export default function HomeScreen({ navigation }) {
+  const [services, setServices] = useState(FALLBACK_SERVICES);
+  const [loading, setLoading] = useState(false);
+
   const handleReserve = (service) => {
     navigation.navigate('Booking', { service });
   };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/services`);
+        if (!mounted) return;
+        if (!res.ok) {
+          console.warn('Failed to fetch services from backend, using fallback');
+          setLoading(false);
+          return;
+        }
+        const data = await res.json();
+        if (!mounted) return;
+        if (Array.isArray(data) && data.length > 0) setServices(data);
+      } catch (err) {
+        console.warn('Error fetching services, using fallback', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.sectionTitle}>Choisissez un service et réservez</Text>
-        {SERVICES.map((s) => (
-          <ServiceCard key={s.id} service={s} onReserve={handleReserve} />
-        ))}
+        {loading ? (
+          <ActivityIndicator size="large" color="#1E40AF" style={{ marginTop: 20 }} />
+        ) : (
+          services.map((s) => (
+            <ServiceCard key={s.id} service={s} onReserve={handleReserve} />
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );

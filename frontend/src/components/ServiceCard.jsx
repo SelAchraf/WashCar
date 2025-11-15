@@ -11,7 +11,7 @@ export default function ServiceCard({ service, onReserve }) {
         <View style={styles.iconWrap}>
           <Ionicons name="car-sport-outline" size={18} color="#1E40AF" />
         </View>
-        <Text style={styles.title}>{service.title}</Text>
+  <Text style={styles.title}>{service.name}</Text>
       </View>
       {service.description ? <Text style={styles.desc}>{service.description}</Text> : null}
       <View style={styles.footerRow}>

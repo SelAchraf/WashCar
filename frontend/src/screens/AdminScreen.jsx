@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable, Alert, TextInput, ScrollView, Modal } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { BACKEND_URL } from '../config/api';
 
 // Booking Item Card Component
 function BookingItemCard({ item, user, BACKEND_URL, onUpdateStatus, onDelete }) {
@@ -132,7 +133,6 @@ export default function AdminScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [formData, setFormData] = useState({ name: '', description: '', price: '' });
-  const BACKEND_URL = (global && global.BACKEND_URL) || 'http://localhost:4000';
 
   useEffect(() => {
     if (!user) return;

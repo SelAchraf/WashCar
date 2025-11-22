@@ -1,39 +1,30 @@
 {
-  "name": "washcar",
-  "version": "1.0.0",
-  "private": true,
-  "main": "node_modules/expo/AppEntry.js",
-  "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
-    "lint": "eslint .",
-    "format": "prettier --write .",
-    "fb": "firebase-tools"
-  },
-  "dependencies": {
-    "@expo/vector-icons": "^15.0.3",
-    "@react-native-async-storage/async-storage": "^2.1.0",
-    "@react-native-community/datetimepicker": "8.4.4",
-    "@react-navigation/native": "^6.1.18",
-    "@react-navigation/native-stack": "^6.11.0",
-    "expo": "~54.0.25",
-    "expo-constants": "~18.0.10",
-    "expo-status-bar": "~3.0.8",
-    "firebase": "^12.5.0",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "react-native": "0.81.5",
-    "react-native-safe-area-context": "~5.6.0",
-    "react-native-screens": "~4.16.0",
-    "react-native-web": "~0.21.0"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.25.2",
-    "eslint": "^8.57.0",
-    "eslint-config-universe": "^13.0.0",
-    "firebase-tools": "^14.24.1",
-    "prettier": "^3.3.3"
+  "expo": {
+    "name": "WashCar",
+    "slug": "washcar",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "splash": {
+      "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/",
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {},
+    "web": {
+      "bundler": "metro"
+    },
+    "scheme": "washcar",
+    "primaryColor": "#1E40AF",
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

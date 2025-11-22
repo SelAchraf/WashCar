@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState, useCall
 import { useAuth } from './AuthContext';
 
 // Backend URL - can be overridden by setting global.BACKEND_URL in the app environment
-const BACKEND_URL = (global && global.BACKEND_URL) || 'http://localhost:4000';
+import { BACKEND_URL } from '../config/api';
 
 const BookingContext = createContext(null);
 

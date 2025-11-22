@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SERVICES as FALLBACK_SERVICES } from '../data/services.js';
 import ServiceCard from '../components/ServiceCard.jsx';
 
-const BACKEND_URL = (global && global.BACKEND_URL) || 'http://localhost:4000';
+import { BACKEND_URL } from '../config/api';
 
 export default function HomeScreen({ navigation }) {
   const [services, setServices] = useState(FALLBACK_SERVICES);

@@ -7,24 +7,27 @@
     "splash": {
       "backgroundColor": "#ffffff"
     },
-    "updates": {
-      "url": "https://u.expo.dev/",
-      "fallbackToCacheTimeout": 0
-    },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
+    "scheme": "washcar",
+    "sdkVersion": "51.0.0",
+
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.washcar.app"
     },
-    "android": {},
+
+    "android": {
+      "package": "com.washcar.app"
+    },
+
     "web": {
       "bundler": "metro"
     },
-    "scheme": "washcar",
-    "sdkVersion": "51.0.0",
+
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+
     "primaryColor": "#1E40AF"
   }
 }
-
-

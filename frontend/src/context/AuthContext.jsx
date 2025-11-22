@@ -1,4 +1,6 @@
+// Backend URL - can be overridden by setting global.BACKEND_URL in the app environment
 import { BACKEND_URL } from '../config/api';
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   createUserWithEmailAndPassword, 
@@ -9,7 +11,6 @@ import {
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 
-// Backend URL - can be overridden by setting global.BACKEND_URL in the app environment
 
 const AuthContext = createContext(null);
 

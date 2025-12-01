@@ -20,6 +20,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [role, setRole] = useState('client'); // 'client' or 'owner'
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { signIn, signUp } = useAuth();
@@ -46,7 +47,7 @@ export default function LoginScreen() {
       if (isLogin) {
         result = await signIn(email.trim(), password);
       } else {
-        result = await signUp(email.trim(), password, name.trim());
+        result = await signUp(email.trim(), password, name.trim(), role);
       }
 
       if (!result.success) {
@@ -109,17 +110,51 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
 
           <View style={styles.form}>
             {!isLogin && (
-              <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Nom complet"
-                  placeholderTextColor="#9CA3AF"
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                />
-              </View>
+              <>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Nom complet"
+                    placeholderTextColor="#9CA3AF"
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                  />
+                </View>
+
+                <View style={styles.roleContainer}>
+                  <Text style={styles.roleLabel}>Type de compte</Text>
+                  <View style={styles.roleButtons}>
+                    <Pressable
+                      style={[styles.roleButton, role === 'client' && styles.roleButtonActive]}
+                      onPress={() => setRole('client')}
+                    >
+                      <Ionicons
+                        name="person"
+                        size={24}
+                        color={role === 'client' ? '#FFFFFF' : '#6B7280'}
+                      />
+                      <Text style={[styles.roleButtonText, role === 'client' && styles.roleButtonTextActive]}>
+                        Client
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.roleButton, role === 'owner' && styles.roleButtonActive]}
+                      onPress={() => setRole('owner')}
+                    >
+                      <Ionicons
+                        name="business"
+                        size={24}
+                        color={role === 'owner' ? '#FFFFFF' : '#6B7280'}
+                      />
+                      <Text style={[styles.roleButtonText, role === 'owner' && styles.roleButtonTextActive]}>
+                        Propriétaire
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </>
             )}
 
             <View style={styles.inputContainer}>
@@ -133,6 +168,7 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                autoComplete="email"
               />
             </View>
 
@@ -146,6 +182,8 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
+                autoComplete="password"
+                textContentType="password"
               />
               <Pressable
                 onPress={() => setShowPassword(!showPassword)}
@@ -183,6 +221,7 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                   setEmail('');
                   setPassword('');
                   setName('');
+                  setRole('client');
                 }} 
                 disabled={loading}
               >
@@ -295,6 +334,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1E40AF',
     fontWeight: '600',
+  },
+  roleContainer: {
+    marginBottom: 16,
+  },
+  roleLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  roleButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  roleButton: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  roleButtonActive: {
+    backgroundColor: '#1E40AF',
+    borderColor: '#1E40AF',
+  },
+  roleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  roleButtonTextActive: {
+    color: '#FFFFFF',
   },
 });
 

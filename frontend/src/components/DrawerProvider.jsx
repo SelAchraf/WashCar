@@ -113,17 +113,17 @@ function DrawerInner({ onNavigate }) {
     }
   };
 
-  // If user is admin, don't show menu items (admin only sees admin screen)
-  const isAdmin = userProfile && userProfile.role === 'admin';
+  // If user is owner, don't show menu items (owner only sees owner screen)
+  const isOwner = userProfile && userProfile.role === 'owner';
 
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.header}>
         <Image source={{ uri: 'https://i.pravatar.cc/100' }} style={styles.avatar} />
-        <Text style={styles.name}>{profile.name || userProfile?.name || 'Admin'}</Text>
+        <Text style={styles.name}>{profile.name || userProfile?.name || 'Utilisateur'}</Text>
         <Text style={styles.email}>{profile.email || userProfile?.email || ''}</Text>
       </View>
-      {!isAdmin && (
+      {!isOwner && (
         <View style={{ paddingVertical: 8 }}>
           {entries.map((e) => {
             const current = typeof nav.getCurrentRoute === 'function' ? nav.getCurrentRoute() : null;

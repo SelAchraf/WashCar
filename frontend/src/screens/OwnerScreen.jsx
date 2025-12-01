@@ -123,7 +123,7 @@ function BookingItemCard({ item, user, BACKEND_URL, onUpdateStatus, onDelete }) 
   );
 }
 
-export default function AdminScreen() {
+export default function OwnerScreen() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
@@ -149,7 +149,7 @@ export default function AdminScreen() {
     setLoadingBookings(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`${BACKEND_URL}/api/admin/bookings`, {
+      const res = await fetch(`${BACKEND_URL}/api/owner/bookings`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!isMounted) return;
@@ -171,7 +171,7 @@ export default function AdminScreen() {
     setLoadingServices(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`${BACKEND_URL}/api/admin/services`, {
+      const res = await fetch(`${BACKEND_URL}/api/owner/services`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!isMounted) return;
@@ -198,7 +198,7 @@ export default function AdminScreen() {
     try {
       console.log('Updating booking status:', id, status);
       const token = await user.getIdToken();
-      const res = await fetch(`${BACKEND_URL}/api/admin/bookings/${id}`, {
+      const res = await fetch(`${BACKEND_URL}/api/owner/bookings/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status }),
@@ -219,7 +219,7 @@ export default function AdminScreen() {
         onPress: async () => {
           try {
             const token = await user.getIdToken();
-            const res = await fetch(`${BACKEND_URL}/api/admin/bookings/${id}`, {
+            const res = await fetch(`${BACKEND_URL}/api/owner/bookings/${id}`, {
               method: 'DELETE',
               headers: { Authorization: `Bearer ${token}` },
             });
@@ -259,7 +259,7 @@ export default function AdminScreen() {
       const body = { name: formData.name, description: formData.description, price: parseInt(formData.price) || 0 };
       
       if (editingService) {
-        const res = await fetch(`${BACKEND_URL}/api/admin/services/${editingService.id}`, {
+        const res = await fetch(`${BACKEND_URL}/api/owner/services/${editingService.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(body),
@@ -267,7 +267,7 @@ export default function AdminScreen() {
         if (!res.ok) throw new Error(await res.text());
         setServices(svcs => svcs.map(s => s.id === editingService.id ? { ...s, ...body } : s));
       } else {
-        const res = await fetch(`${BACKEND_URL}/api/admin/services`, {
+        const res = await fetch(`${BACKEND_URL}/api/owner/services`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(body),
@@ -298,7 +298,7 @@ export default function AdminScreen() {
         onPress: async () => {
           try {
             const token = await user.getIdToken();
-            const res = await fetch(`${BACKEND_URL}/api/admin/services/${id}`, {
+            const res = await fetch(`${BACKEND_URL}/api/owner/services/${id}`, {
               method: 'DELETE',
               headers: { Authorization: `Bearer ${token}` },
             });

@@ -4,8 +4,11 @@
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
+    "prestart": "node scripts/setup-ip.js",
     "start": "expo start",
+    "preandroid": "node scripts/setup-ip.js",
     "android": "expo start --android",
+    "preios": "node scripts/setup-ip.js",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint .",

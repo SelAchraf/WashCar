@@ -23,6 +23,14 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
+        
+        // If we already have a profile (from signup), skip fetching
+        if (userProfile && userProfile.email === firebaseUser.email) {
+          console.log('Using cached user profile from signup');
+          setLoading(false);
+          return;
+        }
+        
         // Fetch user profile from backend
         try {
           const token = await firebaseUser.getIdToken();
@@ -101,7 +109,7 @@ export function AuthProvider({ children }) {
 
       try {
         const token = await firebaseUser.getIdToken();
-        await fetch(`${BACKEND_URL}/api/users/${firebaseUser.uid}`, {
+        const createRes = await fetch(`${BACKEND_URL}/api/users/${firebaseUser.uid}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -109,6 +117,14 @@ export function AuthProvider({ children }) {
           },
           body: JSON.stringify(userProfile),
         });
+        
+        if (createRes.ok) {
+          console.log('User profile created successfully during signup');
+          // Set the profile immediately to avoid fetch race condition
+          setUserProfile(userProfile);
+        } else {
+          console.warn('Failed to create user profile during signup:', await createRes.text());
+        }
       } catch (e) {
         console.warn('Failed to create user profile on backend:', e);
       }

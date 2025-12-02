@@ -16,6 +16,9 @@ export default function ConfirmationScreen({ route, navigation }) {
         {booking && (
           <View style={styles.card}>
             <Text style={styles.itemTitle}>{booking.service.name} • {formatDA(booking.service.price)}</Text>
+            {booking.service.ownerName && (
+              <Text style={styles.itemText}>Wash Car: {booking.service.ownerName}</Text>
+            )}
             <Text style={styles.itemText}>Date: {formattedDate}</Text>
             <Text style={styles.itemText}>Créneau: {booking.slot.label}</Text>
             <Text style={styles.itemText}>Adresse: {booking.address}</Text>

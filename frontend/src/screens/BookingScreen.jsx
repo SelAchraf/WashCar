@@ -94,7 +94,12 @@ export default function BookingScreen({ route, navigation }) {
     <SafeAreaView style={styles.container}>
       <View style={styles.headerSpace} />
       <View style={styles.headerInline}>
-  <Text style={styles.headerTitle}>{service?.name}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>{service?.name}</Text>
+          {service?.ownerName && (
+            <Text style={styles.headerSubtitle}>Wash Car: {service.ownerName}</Text>
+          )}
+        </View>
         <Text style={styles.headerPrice}>{formatDA(service?.price ?? 0)}</Text>
       </View>
       <View style={styles.content}>
@@ -157,6 +162,7 @@ const styles = StyleSheet.create({
   headerSpace: { height: 8 },
   headerInline: { paddingHorizontal: 20, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  headerSubtitle: { fontSize: 13, color: '#6B7280', marginTop: 2 },
   headerPrice: { fontSize: 16, fontWeight: '700', color: '#1E40AF' },
   content: { padding: 20 },
   label: { fontSize: 12, color: '#374151', marginBottom: 4 },

@@ -38,6 +38,9 @@ export default function MesReservationsScreen() {
           <Text style={styles.title}>{item.service.name || item.service}</Text>
           <StatusBadge status={item.status} />
         </View>
+        {item.service.ownerName && (
+          <Text style={styles.sub}>Wash Car: {item.service.ownerName}</Text>
+        )}
         <Text style={styles.sub}>Date: {d} • {item.slot?.label || item.slot}</Text>
         <Text style={styles.sub}>Adresse: {item.address}</Text>
         <Text style={styles.price}>{formatDA(item.service.price || 0)}</Text>

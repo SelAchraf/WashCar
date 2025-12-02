@@ -11,8 +11,14 @@ export default function ServiceCard({ service, onReserve }) {
         <View style={styles.iconWrap}>
           <Ionicons name="car-sport-outline" size={18} color="#1E40AF" />
         </View>
-  <Text style={styles.title}>{service.name}</Text>
+        <Text style={styles.title}>{service.name}</Text>
       </View>
+      {service.ownerName && (
+        <View style={styles.ownerRow}>
+          <Ionicons name="business-outline" size={14} color="#6B7280" />
+          <Text style={styles.ownerText}>{service.ownerName}</Text>
+        </View>
+      )}
       {service.description ? <Text style={styles.desc}>{service.description}</Text> : null}
       <View style={styles.footerRow}>
         <Text style={styles.price}>{formatDA(service.price)}</Text>
@@ -45,6 +51,17 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   title: { fontSize: 18, fontWeight: '600', color: '#111827' },
+  ownerRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginTop: 4,
+    gap: 4,
+  },
+  ownerText: { 
+    fontSize: 13, 
+    color: '#6B7280',
+    fontWeight: '500',
+  },
   desc: { color: '#4b5563', marginTop: 4 },
   footerRow: {
     flexDirection: 'row',

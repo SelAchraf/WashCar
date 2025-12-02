@@ -55,7 +55,7 @@ function AppNavigator() {
             // Authenticated screens
             isOwner ? (
               // Owner-only screens
-              <Stack.Screen name="Owner" component={OwnerScreen} options={{ title: 'Gestion Wash Car', headerLeft: () => <OwnerLogoutButton /> }} />
+              <Stack.Screen name="Owner" component={OwnerScreen} options={{ title: 'Gestion Lavage', headerLeft: () => <OwnerLogoutButton /> }} />
             ) : (
               // Regular user screens
               <>

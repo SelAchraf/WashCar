@@ -89,7 +89,7 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  const signUp = async (email, password, name, role = 'client') => {
+  const signUp = async (email, password, name, role = 'client', address = '', phone = '') => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
@@ -101,8 +101,8 @@ export function AuthProvider({ children }) {
       const userProfile = {
         name,
         email,
-        phone: '',
-        address: '',
+        phone: phone || '',
+        address: address || '',
         role: role, // 'client' or 'owner'
         createdAt: new Date().toISOString(),
       };

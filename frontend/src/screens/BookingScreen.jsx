@@ -229,9 +229,6 @@ export default function BookingScreen({ route, navigation }) {
 
         <Button title="Confirmer" onPress={handleConfirm} />
 
-        <Text style={styles.hint}>
-          Astuce: vos réservations sont sauvegardées en ligne et accessibles sur tous vos appareils.
-        </Text>
       </View>
     </SafeAreaView>
   );

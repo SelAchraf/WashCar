@@ -4,9 +4,39 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { BACKEND_URL } from '../config/api';
 
+// Car wash service types with applicable vehicle types
+const SERVICE_TYPES = [
+  { value: '', label: '-- Sélectionner un type --', vehicles: [] },
+  { value: 'Lavage Extérieur Simple', label: 'Lavage Extérieur Simple', vehicles: ['motorcycle', 'car', 'truck'] },
+  { value: 'Lavage Extérieur Complet', label: 'Lavage Extérieur Complet', vehicles: ['motorcycle', 'car', 'truck'] },
+  { value: 'Lavage Intérieur Simple', label: 'Lavage Intérieur Simple', vehicles: ['car', 'truck'] },
+  { value: 'Lavage Intérieur Complet', label: 'Lavage Intérieur Complet', vehicles: ['car', 'truck'] },
+  { value: 'Lavage Complet (Int + Ext)', label: 'Lavage Complet (Int + Ext)', vehicles: ['car', 'truck'] },
+  { value: 'Lavage Premium', label: 'Lavage Premium', vehicles: ['car', 'truck'] },
+  { value: 'Lavage Express', label: 'Lavage Express', vehicles: ['motorcycle', 'car'] },
+  { value: 'Nettoyage Moteur', label: 'Nettoyage Moteur', vehicles: ['motorcycle', 'car', 'truck'] },
+  { value: 'Polissage', label: 'Polissage', vehicles: ['motorcycle', 'car', 'truck'] },
+  { value: 'Lustrage', label: 'Lustrage', vehicles: ['car', 'truck'] },
+  { value: 'Cire & Protection', label: 'Cire & Protection', vehicles: ['car', 'truck'] },
+  { value: 'Traitement Céramique', label: 'Traitement Céramique', vehicles: ['car', 'truck'] },
+  { value: 'Nettoyage Sièges', label: 'Nettoyage Sièges', vehicles: ['car', 'truck'] },
+  { value: 'Nettoyage Moquettes', label: 'Nettoyage Moquettes', vehicles: ['car', 'truck'] },
+  { value: 'Nettoyage Vitres', label: 'Nettoyage Vitres', vehicles: ['motorcycle', 'car', 'truck'] },
+  { value: 'Désinfection Intérieur', label: 'Désinfection Intérieur', vehicles: ['car', 'truck'] },
+  { value: 'Traitement Anti-odeur', label: 'Traitement Anti-odeur', vehicles: ['car', 'truck'] },
+  { value: 'Nettoyage Jantes', label: 'Nettoyage Jantes', vehicles: ['motorcycle', 'car', 'truck'] },
+  { value: 'Lavage Sans Eau', label: 'Lavage Sans Eau', vehicles: ['motorcycle', 'car', 'truck'] },
+];
+
+// Get applicable vehicles for a service type
+const getApplicableVehicles = (serviceType) => {
+  const service = SERVICE_TYPES.find(s => s.value === serviceType);
+  return service ? service.vehicles : ['motorcycle', 'car', 'truck'];
+};
+
 // Owner Account Management Component
 function OwnerAccountTab() {
-  const { user, userProfile, logout } = useAuth();
+  const { user, userProfile, logout, updateUserProfile } = useAuth();
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -31,21 +61,18 @@ function OwnerAccountTab() {
     }
     
     try {
-      const token = await user.getIdToken();
-      const res = await fetch(`${BACKEND_URL}/api/users/${user.uid}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
+      const result = await updateUserProfile({
+        ...userProfile,
+        name: formData.name,
+        phone: formData.phone,
+        address: formData.address,
       });
       
-      if (res.ok) {
+      if (result.success) {
         Alert.alert('Succès', 'Profil mis à jour avec succès');
         setEditMode(false);
       } else {
-        Alert.alert('Erreur', 'Impossible de mettre à jour le profil');
+        Alert.alert('Erreur', result.error || 'Impossible de mettre à jour le profil');
       }
     } catch (error) {
       console.error('Update profile error:', error);
@@ -267,7 +294,22 @@ function BookingItemCard({ item, user, BACKEND_URL, onUpdateStatus, onDelete }) 
     }
   };
   
-  const bookingDate = item.date ? formatDateYYYYMMDD(item.date) : (item.createdAt ? formatDateYYYYMMDD(item.createdAt) : 'N/A');
+  // Format date in a more readable way (e.g., "2 Déc 2025")
+  const formatDateReadable = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+      const day = date.getDate();
+      const month = months[date.getMonth()];
+      const year = date.getFullYear();
+      return `${day} ${month} ${year}`;
+    } catch {
+      return 'N/A';
+    }
+  };
+  
+  const bookingDate = item.date ? formatDateReadable(item.date) : (item.createdAt ? formatDateReadable(item.createdAt) : 'N/A');
   
   // Get status display with appropriate color
   const getStatusColor = (status) => {
@@ -284,45 +326,123 @@ function BookingItemCard({ item, user, BACKEND_URL, onUpdateStatus, onDelete }) 
   };
   
   const currentStatus = item.status || 'En attente';
+  const statusColor = getStatusColor(currentStatus);
+  
+  // Get status icon
+  const getStatusIcon = (status) => {
+    switch(status?.toLowerCase()) {
+      case 'en attente':
+        return 'time-outline';
+      case 'confirmée':
+        return 'checkmark-circle';
+      case 'annulée':
+        return 'close-circle';
+      default:
+        return 'ellipse-outline';
+    }
+  };
+  
+  // Get vehicle icon based on vehicle type
+  const getVehicleIcon = (vehicleType) => {
+    switch(vehicleType) {
+      case 'motorcycle':
+        return 'bicycle';
+      case 'truck':
+        return 'bus';
+      case 'car':
+      default:
+        return 'car-sport';
+    }
+  };
   
   return (
-    <View style={styles.card}>
-      {/* Title row with action buttons */}
-      <View style={styles.serviceTitleRow}>
-        <Text style={styles.cardTitle}>{String(serviceTitle)}</Text>
+    <View style={styles.bookingCard}>
+      {/* Status Badge */}
+      <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
+        <Ionicons name={getStatusIcon(currentStatus)} size={16} color="#FFFFFF" />
+        <Text style={styles.statusBadgeText}>{String(currentStatus)}</Text>
+      </View>
+
+      {/* Service Title & Actions */}
+      <View style={styles.bookingHeader}>
+        <View style={styles.serviceIconContainer}>
+          <Ionicons name={getVehicleIcon(item.vehicleType)} size={24} color="#1E40AF" />
+        </View>
+        <View style={styles.bookingHeaderContent}>
+          <Text style={styles.bookingServiceTitle}>{String(serviceTitle)}</Text>
+          <Text style={styles.bookingPrice}>{String(servicePrice)} DA</Text>
+        </View>
         {currentStatus?.toLowerCase() === 'en attente' && (
-          <View style={styles.actions}>
+          <View style={styles.bookingActions}>
             <Pressable 
-              style={[styles.actionBtn, { backgroundColor: '#059669' }]} 
+              style={[styles.bookingActionBtn, styles.confirmBtn]} 
               onPress={() => onUpdateStatus(item.id, 'Confirmée')}
             >
-              <Text style={styles.actionText}>✓</Text>
+              <Ionicons name="checkmark" size={20} color="#FFFFFF" />
             </Pressable>
             <Pressable 
-              style={[styles.actionBtn, { backgroundColor: '#DC2626' }]} 
+              style={[styles.bookingActionBtn, styles.rejectBtn]} 
               onPress={() => onUpdateStatus(item.id, 'Annulée')}
             >
-              <Text style={styles.actionText}>✕</Text>
+              <Ionicons name="close" size={20} color="#FFFFFF" />
             </Pressable>
           </View>
         )}
       </View>
-      
-      {/* Booking details */}
-      <View style={{ flex: 1 }}>
-        <Text style={styles.cardText}>Client: {loading ? 'Chargement...' : String(clientName)}</Text>
-        <Text style={styles.cardText}>Téléphone: {String(item.phone || 'N/A')}</Text>
-        <Text style={styles.cardText}>Date: {String(bookingDate)}</Text>
-        <Text style={styles.cardText}>Créneau: {String(item.slot?.label || 'N/A')}</Text>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-          <Text style={[styles.cardText, { fontWeight: '700', color: getStatusColor(currentStatus) }]}>
-            Status: {String(currentStatus)}
-          </Text>
-          <Text style={[styles.cardText, { fontWeight: '700', color: '#1E40AF' }]}>
-            Prix: {String(servicePrice)} DA
-          </Text>
+
+      {/* Client & Date Information (Left Column) */}
+      <View style={styles.bookingSection}>
+        <View style={styles.bookingInfoRow}>
+          <View style={styles.bookingInfoColumn}>
+            <View style={styles.bookingInfoItem}>
+              <Ionicons name="person-outline" size={18} color="#6B7280" />
+              <View style={styles.bookingInfoContent}>
+                <Text style={styles.bookingInfoLabel}>Client</Text>
+                <Text style={styles.bookingInfoValue}>
+                  {loading ? 'Chargement...' : String(clientName)}
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.bookingInfoItem, { marginTop: 12 }]}>
+              <Ionicons name="call-outline" size={18} color="#6B7280" />
+              <View style={styles.bookingInfoContent}>
+                <Text style={styles.bookingInfoLabel}>Téléphone</Text>
+                <Text style={styles.bookingInfoValue}>{String(item.phone || 'N/A')}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.bookingInfoColumn}>
+            <View style={styles.bookingInfoItem}>
+              <Ionicons name="calendar-outline" size={18} color="#6B7280" />
+              <View style={styles.bookingInfoContent}>
+                <Text style={styles.bookingInfoLabel}>Date</Text>
+                <Text style={styles.bookingInfoValue}>{String(bookingDate)}</Text>
+              </View>
+            </View>
+            <View style={[styles.bookingInfoItem, { marginTop: 12 }]}>
+              <Ionicons name="time-outline" size={18} color="#6B7280" />
+              <View style={styles.bookingInfoContent}>
+                <Text style={styles.bookingInfoLabel}>Créneau</Text>
+                <Text style={styles.bookingInfoValue}>{String(item.slot?.label || 'N/A')}</Text>
+              </View>
+            </View>
+          </View>
         </View>
       </View>
+
+      {/* Address Information */}
+      {item.address && (
+        <View style={styles.bookingSection}>
+          <View style={styles.bookingInfoItem}>
+            <Ionicons name="location-outline" size={18} color="#6B7280" />
+            <View style={styles.bookingInfoContent}>
+              <Text style={styles.bookingInfoLabel}>Adresse</Text>
+              <Text style={styles.bookingInfoValue}>{String(item.address)}</Text>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -336,6 +456,7 @@ export default function OwnerScreen() {
   const [loadingServices, setLoadingServices] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  const [serviceTypePickerVisible, setServiceTypePickerVisible] = useState(false);
   const [formData, setFormData] = useState({ 
     name: '', 
     description: '', 
@@ -482,14 +603,20 @@ export default function OwnerScreen() {
 
   const saveService = async () => {
     if (!formData.name.trim()) {
-      Alert.alert('Erreur', 'Le nom est requis');
+      Alert.alert('Erreur', 'Le type de service est requis');
       return;
     }
     
-    // Validate that at least one vehicle type has a price
-    const hasPrices = formData.prices.motorcycle || formData.prices.car || formData.prices.truck;
-    if (!hasPrices) {
-      Alert.alert('Erreur', 'Veuillez définir au moins un prix');
+    // Get applicable vehicles for this service type
+    const applicableVehicles = getApplicableVehicles(formData.name);
+    
+    // Validate that at least one applicable vehicle type has a price
+    const hasApplicablePrice = applicableVehicles.some(vehicle => {
+      return formData.prices[vehicle] && parseInt(formData.prices[vehicle]) > 0;
+    });
+    
+    if (!hasApplicablePrice) {
+      Alert.alert('Erreur', 'Veuillez définir au moins un prix pour ce type de service');
       return;
     }
     
@@ -637,24 +764,42 @@ export default function OwnerScreen() {
             keyExtractor={i => i.id}
             contentContainerStyle={styles.listContent}
             renderItem={({ item }) => (
-              <View style={styles.card}>
-                {/* Title row with action buttons */}
-                <View style={styles.serviceTitleRow}>
-                  <Text style={styles.cardTitle}>{item.name || 'Service'}</Text>
-                  <View style={styles.actions}>
-                    <Pressable style={[styles.actionBtn, { backgroundColor: '#2563EB' }]} onPress={() => openServiceModal(item)}>
-                      <Text style={styles.actionText}>✎</Text>
+              <View style={styles.serviceCard}>
+                {/* Enhanced Service Header */}
+                <View style={styles.serviceCardHeader}>
+                  <View style={styles.serviceIconBadge}>
+                    <Ionicons name="sparkles" size={20} color="#1E40AF" />
+                  </View>
+                  <View style={styles.serviceHeaderContent}>
+                    <Text style={styles.serviceTypeLabel}>Type de service</Text>
+                    <Text style={styles.serviceTypeName}>{item.name || 'Service'}</Text>
+                  </View>
+                  <View style={styles.serviceActions}>
+                    <Pressable 
+                      style={[styles.serviceActionBtn, styles.editActionBtn]} 
+                      onPress={() => openServiceModal(item)}
+                    >
+                      <Ionicons name="create-outline" size={18} color="#FFFFFF" />
                     </Pressable>
-                    <Pressable style={[styles.actionBtn, { backgroundColor: '#DC2626' }]} onPress={() => deleteService(item.id)}>
-                      <Text style={styles.actionText}>✕</Text>
+                    <Pressable 
+                      style={[styles.serviceActionBtn, styles.deleteActionBtn]} 
+                      onPress={() => deleteService(item.id)}
+                    >
+                      <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
                     </Pressable>
                   </View>
                 </View>
                 
                 {/* Service details */}
-                <View style={{ flex: 1 }}>
+                <View style={styles.serviceCardContent}>
                   {item.description && (
-                    <Text style={styles.cardText}>{String(item.description)}</Text>
+                    <View style={styles.descriptionContainer}>
+                      <View style={styles.descriptionHeader}>
+                        <Ionicons name="information-circle-outline" size={16} color="#6B7280" />
+                        <Text style={styles.descriptionLabel}>Description</Text>
+                      </View>
+                      <Text style={styles.descriptionText}>{String(item.description)}</Text>
+                    </View>
                   )}
                   
                   {/* Vehicle prices */}
@@ -721,13 +866,16 @@ export default function OwnerScreen() {
             </Pressable>
           </View>
           <ScrollView style={styles.modalBody}>
-            <Text style={styles.label}>Nom du service</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="Ex: Lavage Standard" 
-              value={String(formData.name || '')} 
-              onChangeText={(t) => setFormData({ ...formData, name: t })} 
-            />
+            <Text style={styles.label}>Type de service</Text>
+            <Pressable 
+              style={styles.dropdownButton}
+              onPress={() => setServiceTypePickerVisible(true)}
+            >
+              <Text style={[styles.dropdownButtonText, !formData.name && styles.dropdownPlaceholder]}>
+                {formData.name || '-- Sélectionner un type --'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            </Pressable>
             
             <Text style={styles.label}>Description</Text>
             <TextInput 
@@ -740,47 +888,58 @@ export default function OwnerScreen() {
 
             <Text style={[styles.label, { marginTop: 20, fontSize: 16, color: '#1E40AF' }]}>Prix par type de véhicule (DA)</Text>
             
-            <View style={styles.vehicleTypeContainer}>
-              <Ionicons name="bicycle-outline" size={24} color="#6B7280" />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.vehicleLabel}>Moto</Text>
-                <TextInput 
-                  style={styles.priceInput} 
-                  placeholder="Prix" 
-                  value={String(formData.prices.motorcycle || '')} 
-                  onChangeText={(p) => setFormData({ ...formData, prices: { ...formData.prices, motorcycle: p } })} 
-                  keyboardType="numeric" 
-                />
+            {!formData.name ? (
+              <View style={styles.infoBox}>
+                <Ionicons name="information-circle-outline" size={20} color="#6B7280" />
+                <Text style={styles.infoBoxText}>
+                  Sélectionnez d'abord un type de service pour voir les options de prix disponibles
+                </Text>
               </View>
-            </View>
+            ) : (
+              <View style={styles.pricesRowContainer}>
+                {getApplicableVehicles(formData.name).includes('motorcycle') && (
+                  <View style={styles.priceItemContainer}>
+                    <Ionicons name="bicycle-outline" size={28} color="#1E40AF" />
+                    <Text style={styles.vehicleLabel}>Moto</Text>
+                    <TextInput 
+                      style={styles.priceInputCompact} 
+                      placeholder="0" 
+                      value={String(formData.prices.motorcycle || '')} 
+                      onChangeText={(p) => setFormData({ ...formData, prices: { ...formData.prices, motorcycle: p } })} 
+                      keyboardType="numeric" 
+                    />
+                  </View>
+                )}
 
-            <View style={styles.vehicleTypeContainer}>
-              <Ionicons name="car-outline" size={24} color="#6B7280" />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.vehicleLabel}>Voiture</Text>
-                <TextInput 
-                  style={styles.priceInput} 
-                  placeholder="Prix" 
-                  value={String(formData.prices.car || '')} 
-                  onChangeText={(p) => setFormData({ ...formData, prices: { ...formData.prices, car: p } })} 
-                  keyboardType="numeric" 
-                />
-              </View>
-            </View>
+                {getApplicableVehicles(formData.name).includes('car') && (
+                  <View style={styles.priceItemContainer}>
+                    <Ionicons name="car-outline" size={28} color="#1E40AF" />
+                    <Text style={styles.vehicleLabel}>Voiture</Text>
+                    <TextInput 
+                      style={styles.priceInputCompact} 
+                      placeholder="0" 
+                      value={String(formData.prices.car || '')} 
+                      onChangeText={(p) => setFormData({ ...formData, prices: { ...formData.prices, car: p } })} 
+                      keyboardType="numeric" 
+                    />
+                  </View>
+                )}
 
-            <View style={styles.vehicleTypeContainer}>
-              <Ionicons name="bus-outline" size={24} color="#6B7280" />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.vehicleLabel}>Camion</Text>
-                <TextInput 
-                  style={styles.priceInput} 
-                  placeholder="Prix" 
-                  value={String(formData.prices.truck || '')} 
-                  onChangeText={(p) => setFormData({ ...formData, prices: { ...formData.prices, truck: p } })} 
-                  keyboardType="numeric" 
-                />
+                {getApplicableVehicles(formData.name).includes('truck') && (
+                  <View style={styles.priceItemContainer}>
+                    <Ionicons name="bus-outline" size={28} color="#1E40AF" />
+                    <Text style={styles.vehicleLabel}>Camion</Text>
+                    <TextInput 
+                      style={styles.priceInputCompact} 
+                      placeholder="0" 
+                      value={String(formData.prices.truck || '')} 
+                      onChangeText={(p) => setFormData({ ...formData, prices: { ...formData.prices, truck: p } })} 
+                      keyboardType="numeric" 
+                    />
+                  </View>
+                )}
               </View>
-            </View>
+            )}
 
             <Text style={[styles.label, { marginTop: 20, fontSize: 16, color: '#1E40AF' }]}>Créneaux horaires</Text>
             
@@ -828,6 +987,53 @@ export default function OwnerScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Service Type Picker Modal */}
+      <Modal 
+        visible={serviceTypePickerVisible} 
+        animationType="slide"
+        transparent={true}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Sélectionner un type de service</Text>
+              <Pressable onPress={() => setServiceTypePickerVisible(false)}>
+                <Ionicons name="close" size={24} color="#0F172A" />
+              </Pressable>
+            </View>
+            <FlatList
+              data={SERVICE_TYPES}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={[
+                    styles.pickerItem,
+                    formData.name === item.value && styles.pickerItemSelected
+                  ]}
+                  onPress={() => {
+                    if (item.value) { // Don't select the placeholder
+                      setFormData({ ...formData, name: item.value });
+                      setServiceTypePickerVisible(false);
+                    }
+                  }}
+                >
+                  <Text style={[
+                    styles.pickerItemText,
+                    formData.name === item.value && styles.pickerItemTextSelected,
+                    !item.value && styles.pickerItemPlaceholder
+                  ]}>
+                    {item.label}
+                  </Text>
+                  {formData.name === item.value && (
+                    <Ionicons name="checkmark" size={24} color="#1E40AF" />
+                  )}
+                </Pressable>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -842,6 +1048,199 @@ const styles = StyleSheet.create({
   tabTextActive: { color: '#1E40AF' },
   listContent: { padding: 12 },
   card: { padding: 12, backgroundColor: '#fff', borderRadius: 10, marginVertical: 6, marginHorizontal: 0, borderWidth: 1, borderColor: '#E6E9EE' },
+  
+  // Enhanced Booking Card Styles
+  bookingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginVertical: 8,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  statusBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  bookingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  serviceIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  bookingHeaderContent: {
+    flex: 1,
+  },
+  bookingServiceTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  bookingPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1E40AF',
+  },
+  bookingActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  bookingActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  confirmBtn: {
+    backgroundColor: '#059669',
+  },
+  rejectBtn: {
+    backgroundColor: '#DC2626',
+  },
+  bookingSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  bookingInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    gap: 32,
+  },
+  bookingInfoColumn: {
+    flexShrink: 0,
+  },
+  bookingInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  bookingInfoContent: {
+    flex: 1,
+  },
+  bookingInfoLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  bookingInfoValue: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontWeight: '600',
+  },
+  
+  // Enhanced Service Card Styles
+  serviceCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginVertical: 8,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  serviceCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  serviceIconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  serviceHeaderContent: {
+    flex: 1,
+  },
+  serviceTypeLabel: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  serviceTypeName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1E40AF',
+    lineHeight: 22,
+  },
+  serviceActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  serviceActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  editActionBtn: {
+    backgroundColor: '#2563EB',
+  },
+  deleteActionBtn: {
+    backgroundColor: '#DC2626',
+  },
+  serviceCardContent: {
+    flex: 1,
+    padding: 16,
+  },
+  
   serviceTitleRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -863,6 +1262,72 @@ const styles = StyleSheet.create({
   modalBody: { flex: 1, padding: 16 },
   label: { fontSize: 14, fontWeight: '600', color: '#0F172A', marginTop: 12, marginBottom: 6 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12, fontSize: 14 },
+  dropdownButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dropdownButtonText: {
+    fontSize: 14,
+    color: '#0F172A',
+    flex: 1,
+  },
+  dropdownPlaceholder: {
+    color: '#9CA3AF',
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+  },
+  pickerModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  pickerModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  pickerItemSelected: {
+    backgroundColor: '#EFF6FF',
+  },
+  pickerItemText: {
+    fontSize: 16,
+    color: '#0F172A',
+    flex: 1,
+  },
+  pickerItemTextSelected: {
+    color: '#1E40AF',
+    fontWeight: '600',
+  },
+  pickerItemPlaceholder: {
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+  },
   saveBtn: { backgroundColor: '#1E40AF', marginVertical: 20, padding: 14, borderRadius: 8, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   
@@ -889,7 +1354,61 @@ const styles = StyleSheet.create({
   cancelButtonText: { color: '#374151', fontWeight: '600', fontSize: 14 },
   logoutButton: { backgroundColor: '#DC2626', marginTop: 8 },
   
-  // Vehicle type pricing styles
+  // Info box for service selection
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+    gap: 10,
+  },
+  infoBoxText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
+  },
+  
+  // Vehicle type pricing styles (horizontal layout)
+  pricesRowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  priceItemContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 2,
+    borderColor: '#1E40AF',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+  },
+  vehicleLabel: { 
+    fontSize: 12, 
+    fontWeight: '700', 
+    color: '#1E40AF', 
+    marginTop: 6,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  priceInputCompact: { 
+    backgroundColor: '#FFFFFF', 
+    borderWidth: 1, 
+    borderColor: '#D1D5DB', 
+    borderRadius: 6, 
+    padding: 8, 
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    width: '100%',
+    color: '#1E40AF',
+  },
+  // Old styles kept for backward compatibility
   vehicleTypeContainer: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -900,7 +1419,6 @@ const styles = StyleSheet.create({
     padding: 12, 
     marginTop: 8 
   },
-  vehicleLabel: { fontSize: 14, fontWeight: '600', color: '#0F172A', marginBottom: 4 },
   priceInput: { 
     backgroundColor: '#FFFFFF', 
     borderWidth: 1, 
@@ -988,6 +1506,36 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E40AF',
     marginTop: 2,
+  },
+  
+  // Description section in service card
+  descriptionContainer: {
+    marginTop: 8,
+    marginBottom: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  descriptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  descriptionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  descriptionText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#374151',
+    fontStyle: 'italic',
   },
   
   // Time slots section in service card

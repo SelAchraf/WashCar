@@ -41,7 +41,6 @@ export default function HomeScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.sectionTitle}>Choisissez un service et réservez</Text>
         {loading ? (
           <ActivityIndicator size="large" color="#1E40AF" style={{ marginTop: 20 }} />
         ) : (

@@ -390,59 +390,69 @@ function BookingItemCard({ item, user, BACKEND_URL, onUpdateStatus, onDelete }) 
         )}
       </View>
 
-      {/* Client & Date Information (Left Column) */}
-      <View style={styles.bookingSection}>
-        <View style={styles.bookingInfoRow}>
-          <View style={styles.bookingInfoColumn}>
-            <View style={styles.bookingInfoItem}>
-              <Ionicons name="person-outline" size={18} color="#6B7280" />
-              <View style={styles.bookingInfoContent}>
-                <Text style={styles.bookingInfoLabel}>Client</Text>
-                <Text style={styles.bookingInfoValue}>
-                  {loading ? 'Chargement...' : String(clientName)}
-                </Text>
-              </View>
+      {/* Booking Details Grid */}
+      <View style={styles.bookingDetailsContainer}>
+        <View style={styles.bookingDetailsGrid}>
+          {/* Client Info Card */}
+          <View style={styles.detailCard}>
+            <View style={styles.detailIconBadge}>
+              <Ionicons name="person" size={20} color="#1E40AF" />
             </View>
-            <View style={[styles.bookingInfoItem, { marginTop: 12 }]}>
-              <Ionicons name="call-outline" size={18} color="#6B7280" />
-              <View style={styles.bookingInfoContent}>
-                <Text style={styles.bookingInfoLabel}>Téléphone</Text>
-                <Text style={styles.bookingInfoValue}>{String(item.phone || 'N/A')}</Text>
-              </View>
+            <View style={styles.detailInfo}>
+              <Text style={styles.detailLabel}>Client</Text>
+              <Text style={styles.detailValue}>
+                {loading ? 'Chargement...' : String(clientName)}
+              </Text>
             </View>
           </View>
 
-          <View style={styles.bookingInfoColumn}>
-            <View style={styles.bookingInfoItem}>
-              <Ionicons name="calendar-outline" size={18} color="#6B7280" />
-              <View style={styles.bookingInfoContent}>
-                <Text style={styles.bookingInfoLabel}>Date</Text>
-                <Text style={styles.bookingInfoValue}>{String(bookingDate)}</Text>
-              </View>
+          {/* Phone Info Card */}
+          <View style={styles.detailCard}>
+            <View style={styles.detailIconBadge}>
+              <Ionicons name="call" size={20} color="#1E40AF" />
             </View>
-            <View style={[styles.bookingInfoItem, { marginTop: 12 }]}>
-              <Ionicons name="time-outline" size={18} color="#6B7280" />
-              <View style={styles.bookingInfoContent}>
-                <Text style={styles.bookingInfoLabel}>Créneau</Text>
-                <Text style={styles.bookingInfoValue}>{String(item.slot?.label || 'N/A')}</Text>
-              </View>
+            <View style={styles.detailInfo}>
+              <Text style={styles.detailLabel}>Téléphone</Text>
+              <Text style={styles.detailValue}>{String(item.phone || 'N/A')}</Text>
+            </View>
+          </View>
+
+          {/* Date Info Card */}
+          <View style={styles.detailCard}>
+            <View style={styles.detailIconBadge}>
+              <Ionicons name="calendar" size={20} color="#1E40AF" />
+            </View>
+            <View style={styles.detailInfo}>
+              <Text style={styles.detailLabel}>Date</Text>
+              <Text style={styles.detailValue}>{String(bookingDate)}</Text>
+            </View>
+          </View>
+
+          {/* Time Slot Info Card */}
+          <View style={styles.detailCard}>
+            <View style={styles.detailIconBadge}>
+              <Ionicons name="time" size={20} color="#1E40AF" />
+            </View>
+            <View style={styles.detailInfo}>
+              <Text style={styles.detailLabel}>Créneau</Text>
+              <Text style={styles.detailValue}>{String(item.slot?.label || 'N/A')}</Text>
             </View>
           </View>
         </View>
+
+        {/* Address Card - Full Width */}
+        {item.address && (
+          <View style={styles.addressCard}>
+            <View style={styles.detailIconBadge}>
+              <Ionicons name="location" size={20} color="#1E40AF" />
+            </View>
+            <View style={styles.detailInfo}>
+              <Text style={styles.detailLabel}>Adresse</Text>
+              <Text style={styles.detailValue}>{String(item.address)}</Text>
+            </View>
+          </View>
+        )}
       </View>
-
-      {/* Address Information */}
-      {item.address && (
-        <View style={styles.bookingSection}>
-          <View style={styles.bookingInfoItem}>
-            <Ionicons name="location-outline" size={18} color="#6B7280" />
-            <View style={styles.bookingInfoContent}>
-              <Text style={styles.bookingInfoLabel}>Adresse</Text>
-              <Text style={styles.bookingInfoValue}>{String(item.address)}</Text>
-            </View>
-          </View>
-        </View>
-      )}
     </View>
   );
 }
@@ -1134,6 +1144,63 @@ const styles = StyleSheet.create({
   bookingSection: {
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  bookingDetailsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  bookingDetailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  detailCard: {
+    flex: 1,
+    minWidth: '45%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  detailIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailInfo: {
+    flex: 1,
+  },
+  detailLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  addressCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   bookingInfoRow: {
     flexDirection: 'row',

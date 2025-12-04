@@ -240,6 +240,44 @@ app.get('/api/services', async (req, res) => {
   }
 });
 
+// Public owners (lavages) listing - get all owners with their info
+app.get('/api/owners', async (req, res) => {
+  try {
+    const snapshot = await db.collection('users').where('role', '==', 'owner').get();
+    const owners = snapshot.docs.map(d => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: data.name || 'Lavage',
+        email: data.email || '',
+        phone: data.phone || '',
+        address: data.address || '',
+      };
+    });
+    // Sort by name
+    owners.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    res.json(owners);
+  } catch (err) {
+    console.error('Failed to load owners:', err);
+    res.status(500).json({ error: 'Failed to load owners' });
+  }
+});
+
+// Get services for a specific owner
+app.get('/api/owners/:ownerId/services', async (req, res) => {
+  try {
+    const ownerId = req.params.ownerId;
+    const snapshot = await db.collection('services').where('ownerId', '==', ownerId).get();
+    const services = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    services.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    res.json(services);
+  } catch (err) {
+    console.error('Failed to load owner services:', err);
+    res.status(500).json({ error: 'Failed to load services' });
+  }
+});
+
+
 app.post('/api/owner/services', verifyToken, isOwner, async (req, res) => {
   try {
     const uid = req.user.uid;

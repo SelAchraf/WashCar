@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import SplashScreen from './src/screens/SplashScreen.jsx';
 import LoginScreen from './src/screens/LoginScreen.jsx';
 import HomeScreen from './src/screens/HomeScreen.jsx';
+import OwnerDetailsScreen from './src/screens/OwnerDetailsScreen.jsx';
 import BookingScreen from './src/screens/BookingScreen.jsx';
 import ConfirmationScreen from './src/screens/ConfirmationScreen.jsx';
 import MesReservationsScreen from './src/screens/MesReservationsScreen.jsx';
@@ -60,6 +61,7 @@ function AppNavigator() {
               // Regular user screens
               <>
                 <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Accueil', headerLeft: () => <MenuButton /> }} />
+                <Stack.Screen name="OwnerDetails" component={OwnerDetailsScreen} options={{ title: 'Détails du Lavage' }} />
                 <Stack.Screen name="Reservations" component={MesReservationsScreen} options={{ title: 'Mes Réservations', headerLeft: () => <MenuButton /> }} />
                 <Stack.Screen name="Account" component={MonCompteScreen} options={{ title: 'Mon Compte', headerLeft: () => <MenuButton /> }} />
                 <Stack.Screen name="Booking" component={BookingScreen} options={{ title: 'Réserver' }} />

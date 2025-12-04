@@ -25,6 +25,9 @@
     "primaryColor": "#1E40AF",
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "backendIp": "192.168.1.12"
+    }
   }
 }

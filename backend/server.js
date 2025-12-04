@@ -410,6 +410,23 @@ app.put("/api/users/:uid", verifyToken, async (req, res) => {
 
 app.get("/", (req, res) => res.send("WashCar backend running"));
 
-app.listen(PORT, () => {
-  console.log(`WashCar backend listening on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  const os = require('os');
+  const interfaces = os.networkInterfaces();
+  let localIp = 'localhost';
+  
+  // Find the local network IP
+  for (const name of Object.keys(interfaces)) {
+    for (const addr of interfaces[name]) {
+      if (addr.family === 'IPv4' && !addr.internal) {
+        localIp = addr.address;
+        break;
+      }
+    }
+  }
+  
+  console.log(`✓ WashCar backend listening on port ${PORT}`);
+  console.log(`✓ Local: http://localhost:${PORT}`);
+  console.log(`✓ Network: http://${localIp}:${PORT}`);
+  console.log(`\n📱 For Android/iOS devices, use: http://${localIp}:${PORT}`);
 });

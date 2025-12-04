@@ -24,6 +24,10 @@ export default function BookingScreen({ route, navigation }) {
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
+  const [errors, setErrors] = useState({
+    address: '',
+    phone: ''
+  });
   const webDateInputRef = useRef(null);
   const isWeb = Platform.OS === 'web';
   
@@ -83,11 +87,40 @@ export default function BookingScreen({ route, navigation }) {
   };
 
   const handleConfirm = async () => {
-    const v = validate();
-    if (v) {
-      setError(v);
+    // Clear previous errors
+    setErrors({
+      address: '',
+      phone: ''
+    });
+    setError('');
+    
+    let hasError = false;
+    
+    // Validate service
+    if (!service) {
+      setError('Service manquant');
       return;
     }
+    
+    // Validate address
+    if (!address.trim()) {
+      setErrors(prev => ({ ...prev, address: 'L\'adresse de livraison est requise' }));
+      hasError = true;
+    }
+    
+    // Validate phone
+    if (!phone.trim()) {
+      setErrors(prev => ({ ...prev, phone: 'Le numéro de téléphone est requis' }));
+      hasError = true;
+    } else if (!/^\+?\d[\d\s]{6,}$/.test(phone.trim())) {
+      setErrors(prev => ({ ...prev, phone: 'Numéro de téléphone invalide' }));
+      hasError = true;
+    }
+    
+    if (hasError) {
+      return;
+    }
+    
     const booking = {
       service,
       vehicleType,
@@ -271,6 +304,7 @@ export default function BookingScreen({ route, navigation }) {
                 placeholderTextColor="#9CA3AF"
               />
             </View>
+            {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
           </View>
 
           {/* Phone Input */}
@@ -289,6 +323,7 @@ export default function BookingScreen({ route, navigation }) {
                 placeholderTextColor="#9CA3AF"
               />
             </View>
+            {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
           </View>
 
           {error ? (
@@ -506,6 +541,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: 'bold',
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 2,
   },
 });
 

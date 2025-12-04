@@ -27,41 +27,78 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    address: '',
+    phone: ''
+  });
   const { signIn, signUp } = useAuth();
 
   const handleSubmit = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
-      return;
+    // Clear previous errors
+    setErrors({
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      address: '',
+      phone: ''
+    });
+
+    let hasError = false;
+
+    // Validate email
+    if (!email.trim()) {
+      setErrors(prev => ({ ...prev, email: 'L\'email est requis' }));
+      hasError = true;
     }
 
-    if (!isLogin && !name.trim()) {
-      Alert.alert('Erreur', role === 'owner' ? 'Veuillez entrer le nom de votre lavage' : 'Veuillez entrer votre nom');
-      return;
+    // Validate password
+    if (!password.trim()) {
+      setErrors(prev => ({ ...prev, password: 'Le mot de passe est requis' }));
+      hasError = true;
+    } else if (password.length < 6) {
+      setErrors(prev => ({ ...prev, password: 'Le mot de passe doit contenir au moins 6 caractères' }));
+      hasError = true;
     }
 
-    if (!isLogin && password !== confirmPassword) {
-      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
-      return;
-    }
-
-    if (!isLogin && role === 'owner') {
-      if (!address.trim()) {
-        Alert.alert('Erreur', 'Veuillez entrer l\'adresse de votre lavage');
-        return;
+    // Signup-specific validations
+    if (!isLogin) {
+      // Validate name
+      if (!name.trim()) {
+        setErrors(prev => ({ ...prev, name: role === 'owner' ? 'Le nom du lavage est requis' : 'Le nom est requis' }));
+        hasError = true;
       }
-      if (!phone.trim()) {
-        Alert.alert('Erreur', 'Veuillez entrer le numéro de téléphone');
-        return;
+
+      // Validate confirm password
+      if (!confirmPassword.trim()) {
+        setErrors(prev => ({ ...prev, confirmPassword: 'Veuillez confirmer le mot de passe' }));
+        hasError = true;
+      } else if (password !== confirmPassword) {
+        setErrors(prev => ({ ...prev, confirmPassword: 'Les mots de passe ne correspondent pas' }));
+        hasError = true;
       }
-      if (!/^\+?\d[\d\s]{6,}$/.test(phone.trim())) {
-        Alert.alert('Erreur', 'Numéro de téléphone invalide');
-        return;
+
+      // Owner-specific validations
+      if (role === 'owner') {
+        if (!address.trim()) {
+          setErrors(prev => ({ ...prev, address: 'L\'adresse du lavage est requise' }));
+          hasError = true;
+        }
+        if (!phone.trim()) {
+          setErrors(prev => ({ ...prev, phone: 'Le numéro de téléphone est requis' }));
+          hasError = true;
+        } else if (!/^\+?\d[\d\s]{6,}$/.test(phone.trim())) {
+          setErrors(prev => ({ ...prev, phone: 'Numéro de téléphone invalide' }));
+          hasError = true;
+        }
       }
     }
 
-    if (password.length < 6) {
-      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères');
+    if (hasError) {
       return;
     }
 
@@ -140,7 +177,17 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                   <View style={styles.roleButtons}>
                     <Pressable
                       style={[styles.roleButton, role === 'client' && styles.roleButtonActive]}
-                      onPress={() => setRole('client')}
+                      onPress={() => {
+                        setRole('client');
+                        setErrors({
+                          name: '',
+                          email: '',
+                          password: '',
+                          confirmPassword: '',
+                          address: '',
+                          phone: ''
+                        });
+                      }}
                     >
                       <Ionicons
                         name="person"
@@ -153,7 +200,17 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                     </Pressable>
                     <Pressable
                       style={[styles.roleButton, role === 'owner' && styles.roleButtonActive]}
-                      onPress={() => setRole('owner')}
+                      onPress={() => {
+                        setRole('owner');
+                        setErrors({
+                          name: '',
+                          email: '',
+                          password: '',
+                          confirmPassword: '',
+                          address: '',
+                          phone: ''
+                        });
+                      }}
                     >
                       <Ionicons
                         name="business"
@@ -178,6 +235,7 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                     autoCapitalize="words"
                   />
                 </View>
+                {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
 
                 {role === 'owner' && (
                   <>
@@ -192,6 +250,7 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                         autoCapitalize="words"
                       />
                     </View>
+                    {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
 
                     <View style={styles.inputContainer}>
                       <Ionicons name="call-outline" size={20} color="#6B7280" style={styles.inputIcon} />
@@ -205,6 +264,7 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                         autoCapitalize="none"
                       />
                     </View>
+                    {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
                   </>
                 )}
               </>
@@ -224,6 +284,7 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                 autoComplete="email"
               />
             </View>
+            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
             <View style={styles.inputContainer}>
               <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
@@ -249,12 +310,14 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                 />
               </Pressable>
             </View>
+            {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
 
             {!isLogin && (
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
+              <>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
                   placeholder="Confirmer le mot de passe"
                   placeholderTextColor="#9CA3AF"
                   value={confirmPassword}
@@ -275,6 +338,8 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                   />
                 </Pressable>
               </View>
+              {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
+              </>
             )}
 
             <Pressable
@@ -305,6 +370,14 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                   setRole('client');
                   setAddress('');
                   setPhone('');
+                  setErrors({
+                    name: '',
+                    email: '',
+                    password: '',
+                    confirmPassword: '',
+                    address: '',
+                    phone: ''
+                  });
                 }} 
                 disabled={loading}
               >
@@ -456,6 +529,13 @@ const styles = StyleSheet.create({
   },
   roleButtonTextActive: {
     color: '#FFFFFF',
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 12,
+    marginTop: -8,
+    marginBottom: 12,
+    marginLeft: 2,
   },
 });
 

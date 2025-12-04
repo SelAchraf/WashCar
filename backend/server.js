@@ -300,6 +300,8 @@ app.post('/api/owner/services', verifyToken, isOwner, async (req, res) => {
       name: data.name,
       description: data.description || '',
       price: data.price || 0,
+      prices: data.prices || { motorcycle: 0, car: 0, truck: 0 },
+      timeSlots: data.timeSlots || [],
       ownerId: uid,
       ownerName: ownerName,
       createdAt: new Date().toISOString(),
@@ -341,18 +343,20 @@ app.delete('/api/owner/services/:id', verifyToken, isOwner, async (req, res) => 
     const docRef = db.collection('services').doc(id);
     const docSnap = await docRef.get();
     
+    if (!docSnap.exists) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+    
     // Check if this owner owns this service
-    if (docSnap.exists) {
-      const existingService = docSnap.data();
-      if (existingService.ownerId && existingService.ownerId !== uid) {
-        return res.status(403).json({ error: 'You can only delete your own services' });
-      }
+    const existingService = docSnap.data();
+    if (existingService.ownerId && existingService.ownerId !== uid) {
+      return res.status(403).json({ error: 'You can only delete your own services' });
     }
     
     await docRef.delete();
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error('Delete service error:', err);
     res.status(500).json({ error: 'Failed to delete service' });
   }
 });

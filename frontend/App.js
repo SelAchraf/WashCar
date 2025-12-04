@@ -8,11 +8,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import SplashScreen from './src/screens/SplashScreen.jsx';
 import LoginScreen from './src/screens/LoginScreen.jsx';
 import HomeScreen from './src/screens/HomeScreen.jsx';
+import OwnerDetailsScreen from './src/screens/OwnerDetailsScreen.jsx';
 import BookingScreen from './src/screens/BookingScreen.jsx';
 import ConfirmationScreen from './src/screens/ConfirmationScreen.jsx';
 import MesReservationsScreen from './src/screens/MesReservationsScreen.jsx';
 import MonCompteScreen from './src/screens/MonCompteScreen.jsx';
-import AdminScreen from './src/screens/AdminScreen.jsx';
+import OwnerScreen from './src/screens/OwnerScreen.jsx';
 import { AuthProvider, useAuth } from './src/context/AuthContext.jsx';
 import { BookingProvider } from './src/context/BookingContext.jsx';
 import { DrawerProvider, useDrawer } from './src/components/DrawerProvider.jsx';
@@ -30,11 +31,11 @@ function AppNavigator() {
     );
   }
 
-  // Check if user is admin
-  const isAdmin = user && userProfile && userProfile.role === 'admin';
+  // Check if user is owner
+  const isOwner = user && userProfile && userProfile.role === 'owner';
 
-  // Decide initial route: if admin, go to Admin screen automatically
-  const initialRoute = user ? (isAdmin ? 'Admin' : 'Home') : 'Login';
+  // Decide initial route: if owner, go to Owner screen automatically
+  const initialRoute = user ? (isOwner ? 'Owner' : 'Home') : 'Login';
 
   // Use key to force NavigationContainer remount when auth state changes
   // This ensures clean navigation state transition between authenticated/unauthenticated
@@ -53,13 +54,14 @@ function AppNavigator() {
         >
           {user ? (
             // Authenticated screens
-            isAdmin ? (
-              // Admin-only screens
-              <Stack.Screen name="Admin" component={AdminScreen} options={{ title: 'Administration', headerLeft: () => <AdminLogoutButton /> }} />
+            isOwner ? (
+              // Owner-only screens
+              <Stack.Screen name="Owner" component={OwnerScreen} options={{ title: 'Gestion Lavage', headerLeft: () => <OwnerLogoutButton /> }} />
             ) : (
               // Regular user screens
               <>
                 <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Accueil', headerLeft: () => <MenuButton /> }} />
+                <Stack.Screen name="OwnerDetails" component={OwnerDetailsScreen} options={{ title: 'Détails du Lavage' }} />
                 <Stack.Screen name="Reservations" component={MesReservationsScreen} options={{ title: 'Mes Réservations', headerLeft: () => <MenuButton /> }} />
                 <Stack.Screen name="Account" component={MonCompteScreen} options={{ title: 'Mon Compte', headerLeft: () => <MenuButton /> }} />
                 <Stack.Screen name="Booking" component={BookingScreen} options={{ title: 'Réserver' }} />
@@ -100,7 +102,7 @@ function MenuButton() {
   );
 }
 
-function AdminLogoutButton() {
+function OwnerLogoutButton() {
   const { logout } = useAuth();
   
   const handleLogout = async () => {

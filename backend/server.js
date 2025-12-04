@@ -67,7 +67,7 @@ app.post("/api/bookings", verifyToken, async (req, res) => {
     const data = req.body || {};
     // Remove any id field from the request (if present)
     const { id, ...cleanData } = data;
-    // Try to attach the user's name to the booking so admin UI can display it without extra lookups
+    // Try to attach the user's name to the booking so owner UI can display it without extra lookups
     let clientName = '';
     try {
       const userDoc = await db.collection('users').doc(uid).get();
@@ -113,34 +113,52 @@ app.put("/api/bookings/:id", verifyToken, async (req, res) => {
   }
 });
 
-// Admin routes (requires user role 'admin')
-async function isAdmin(req, res, next) {
+// Owner routes (requires user role 'owner')
+async function isOwner(req, res, next) {
   try {
     const uid = req.user?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
     const userDoc = await db.collection('users').doc(uid).get();
     if (!userDoc.exists) return res.status(403).json({ error: 'Forbidden' });
     const profile = userDoc.data();
-    if (profile.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+    if (profile.role !== 'owner') return res.status(403).json({ error: 'Forbidden' });
     next();
   } catch (err) {
-    console.error('isAdmin check failed:', err);
+    console.error('isOwner check failed:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
 
-app.get('/api/admin/bookings', verifyToken, isAdmin, async (req, res) => {
+app.get('/api/owner/bookings', verifyToken, isOwner, async (req, res) => {
   try {
+    const uid = req.user.uid;
+    // Get all bookings, but we'll filter on the frontend based on service.ownerId
+    // OR we can filter here if service is embedded in booking
     const snapshot = await db.collection('bookings').orderBy('createdAt', 'desc').get();
-    const bookings = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    res.json(bookings);
+    const allBookings = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    // Filter bookings to only show those for this owner's services
+    const ownerBookings = allBookings.filter(booking => {
+      // Check if the service in the booking belongs to this owner
+      if (booking.service && booking.service.ownerId === uid) {
+        return true;
+      }
+      // For backward compatibility with old bookings without ownerId
+      // Show all bookings if no ownerId is set (legacy data)
+      if (booking.service && !booking.service.ownerId) {
+        return true;
+      }
+      return false;
+    });
+    
+    res.json(ownerBookings);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to load bookings' });
   }
 });
 
-app.put('/api/admin/bookings/:id', verifyToken, isAdmin, async (req, res) => {
+app.put('/api/owner/bookings/:id', verifyToken, isOwner, async (req, res) => {
   try {
     const id = req.params.id;
     const docRef = db.collection('bookings').doc(id);
@@ -165,7 +183,7 @@ app.put('/api/admin/bookings/:id', verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-app.delete('/api/admin/bookings/:id', verifyToken, isAdmin, async (req, res) => {
+app.delete('/api/owner/bookings/:id', verifyToken, isOwner, async (req, res) => {
   try {
     const id = req.params.id;
     const docRef = db.collection('bookings').doc(id);
@@ -190,11 +208,17 @@ app.delete('/api/admin/bookings/:id', verifyToken, isAdmin, async (req, res) => 
   }
 });
 
-// Services management (admin-only)
-app.get('/api/admin/services', verifyToken, isAdmin, async (req, res) => {
+// Services management (owner-only)
+app.get('/api/owner/services', verifyToken, isOwner, async (req, res) => {
   try {
-    const snapshot = await db.collection('services').orderBy('name').get();
+    const uid = req.user.uid;
+    // Owners should only see their own services
+    const snapshot = await db.collection('services')
+      .where('ownerId', '==', uid)
+      .get();
     const services = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Sort by name in memory (to avoid needing composite index)
+    services.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     res.json(services);
   } catch (err) {
     console.error(err);
@@ -205,8 +229,10 @@ app.get('/api/admin/services', verifyToken, isAdmin, async (req, res) => {
 // Public services listing (clients read available services)
 app.get('/api/services', async (req, res) => {
   try {
-    const snapshot = await db.collection('services').orderBy('name').get();
+    const snapshot = await db.collection('services').get();
     const services = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Sort by name in memory
+    services.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     res.json(services);
   } catch (err) {
     console.error('Failed to load public services:', err);
@@ -214,14 +240,68 @@ app.get('/api/services', async (req, res) => {
   }
 });
 
-app.post('/api/admin/services', verifyToken, isAdmin, async (req, res) => {
+// Public owners (lavages) listing - get all owners with their info
+app.get('/api/owners', async (req, res) => {
   try {
+    const snapshot = await db.collection('users').where('role', '==', 'owner').get();
+    const owners = snapshot.docs.map(d => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: data.name || 'Lavage',
+        email: data.email || '',
+        phone: data.phone || '',
+        address: data.address || '',
+      };
+    });
+    // Sort by name
+    owners.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    res.json(owners);
+  } catch (err) {
+    console.error('Failed to load owners:', err);
+    res.status(500).json({ error: 'Failed to load owners' });
+  }
+});
+
+// Get services for a specific owner
+app.get('/api/owners/:ownerId/services', async (req, res) => {
+  try {
+    const ownerId = req.params.ownerId;
+    const snapshot = await db.collection('services').where('ownerId', '==', ownerId).get();
+    const services = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    services.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    res.json(services);
+  } catch (err) {
+    console.error('Failed to load owner services:', err);
+    res.status(500).json({ error: 'Failed to load services' });
+  }
+});
+
+
+app.post('/api/owner/services', verifyToken, isOwner, async (req, res) => {
+  try {
+    const uid = req.user.uid;
     const data = req.body || {};
     if (!data.name) return res.status(400).json({ error: 'Name is required' });
+    
+    // Fetch owner's profile to get their name
+    let ownerName = 'Wash Car';
+    try {
+      const ownerDoc = await db.collection('users').doc(uid).get();
+      if (ownerDoc.exists) {
+        const ownerProfile = ownerDoc.data();
+        ownerName = ownerProfile.name || ownerProfile.email || 'Wash Car';
+      }
+    } catch (e) {
+      console.warn('Could not fetch owner profile for service creation:', e?.message || e);
+    }
+    
     const serviceData = {
       name: data.name,
       description: data.description || '',
       price: data.price || 0,
+      ownerId: uid,
+      ownerName: ownerName,
       createdAt: new Date().toISOString(),
     };
     const ref = await db.collection('services').add(serviceData);
@@ -232,12 +312,20 @@ app.post('/api/admin/services', verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-app.put('/api/admin/services/:id', verifyToken, isAdmin, async (req, res) => {
+app.put('/api/owner/services/:id', verifyToken, isOwner, async (req, res) => {
   try {
+    const uid = req.user.uid;
     const id = req.params.id;
     const docRef = db.collection('services').doc(id);
     const docSnap = await docRef.get();
     if (!docSnap.exists) return res.status(404).json({ error: 'Service not found' });
+    
+    // Check if this owner owns this service
+    const existingService = docSnap.data();
+    if (existingService.ownerId && existingService.ownerId !== uid) {
+      return res.status(403).json({ error: 'You can only edit your own services' });
+    }
+    
     await docRef.update(req.body || {});
     res.json({ success: true });
   } catch (err) {
@@ -246,10 +334,21 @@ app.put('/api/admin/services/:id', verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-app.delete('/api/admin/services/:id', verifyToken, isAdmin, async (req, res) => {
+app.delete('/api/owner/services/:id', verifyToken, isOwner, async (req, res) => {
   try {
+    const uid = req.user.uid;
     const id = req.params.id;
     const docRef = db.collection('services').doc(id);
+    const docSnap = await docRef.get();
+    
+    // Check if this owner owns this service
+    if (docSnap.exists) {
+      const existingService = docSnap.data();
+      if (existingService.ownerId && existingService.ownerId !== uid) {
+        return res.status(403).json({ error: 'You can only delete your own services' });
+      }
+    }
+    
     await docRef.delete();
     res.json({ success: true });
   } catch (err) {
@@ -264,21 +363,27 @@ app.get("/api/users/:uid", verifyToken, async (req, res) => {
     const uidParam = req.params.uid;
     const currentUid = req.user.uid;
     
-    // Allow users to view their own profile, or allow admins to view any profile
+    console.log(`Fetching user profile for ${uidParam}, requested by ${currentUid}`);
+    
+    // Allow users to view their own profile, or allow owners to view any profile
     if (uidParam !== currentUid) {
-      // Check if the current user is an admin
-      const adminDoc = await db.collection("users").doc(currentUid).get();
-      if (!adminDoc.exists || adminDoc.data().role !== "admin") {
+      // Check if the current user is an owner
+      const ownerDoc = await db.collection("users").doc(currentUid).get();
+      if (!ownerDoc.exists || ownerDoc.data().role !== "owner") {
+        console.log(`Access denied: ${currentUid} is not an owner`);
         return res.status(403).json({ error: "Forbidden" });
       }
     }
     
     const doc = await db.collection("users").doc(uidParam).get();
-    if (!doc.exists)
+    if (!doc.exists) {
+      console.log(`User profile not found for ${uidParam}`);
       return res.status(404).json({ error: "User profile not found" });
+    }
+    console.log(`User profile found for ${uidParam}`);
     res.json(doc.data());
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching user profile:', err);
     res.status(500).json({ error: "Failed to fetch user profile" });
   }
 });
@@ -289,10 +394,12 @@ app.put("/api/users/:uid", verifyToken, async (req, res) => {
     if (uidParam !== req.user.uid)
       return res.status(403).json({ error: "Forbidden" });
     const data = req.body || {};
+    console.log(`Creating/updating user profile for ${uidParam}:`, data);
     await db.collection("users").doc(uidParam).set(data, { merge: true });
+    console.log(`User profile saved successfully for ${uidParam}`);
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error('Error updating user profile:', err);
     res.status(500).json({ error: "Failed to update user profile" });
   }
 });

@@ -1,3 +1,6 @@
+// Backend URL - can be overridden by setting global.BACKEND_URL in the app environment
+import { BACKEND_URL } from '../config/api';
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   createUserWithEmailAndPassword, 
@@ -8,8 +11,6 @@ import {
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 
-// Backend URL - can be overridden by setting global.BACKEND_URL in the app environment
-const BACKEND_URL = (global && global.BACKEND_URL) || 'http://localhost:4000';
 
 const AuthContext = createContext(null);
 
@@ -22,6 +23,14 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
+        
+        // If we already have a profile (from signup), skip fetching
+        if (userProfile && userProfile.email === firebaseUser.email) {
+          console.log('Using cached user profile from signup');
+          setLoading(false);
+          return;
+        }
+        
         // Fetch user profile from backend
         try {
           const token = await firebaseUser.getIdToken();
@@ -33,22 +42,37 @@ export function AuthProvider({ children }) {
             setUserProfile(profile);
           } else if (res.status === 404) {
             // create default profile via backend
+            console.log('User profile not found, creating default profile...');
             const defaultProfile = {
               name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
               email: firebaseUser.email,
               phone: '',
               address: '',
+              role: 'client', // default role for existing users
               createdAt: new Date().toISOString(),
             };
-            await fetch(`${BACKEND_URL}/api/users/${firebaseUser.uid}`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify(defaultProfile),
-            });
-            setUserProfile(defaultProfile);
+            try {
+              const createRes = await fetch(`${BACKEND_URL}/api/users/${firebaseUser.uid}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(defaultProfile),
+              });
+              if (createRes.ok) {
+                console.log('Default profile created successfully');
+                setUserProfile(defaultProfile);
+              } else {
+                console.error('Failed to create default profile:', await createRes.text());
+                // Still set the profile locally so the app can function
+                setUserProfile(defaultProfile);
+              }
+            } catch (createError) {
+              console.error('Error creating default profile:', createError);
+              // Still set the profile locally so the app can function
+              setUserProfile(defaultProfile);
+            }
           } else {
             console.error('Failed to fetch user profile from backend', await res.text());
           }
@@ -65,7 +89,7 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  const signUp = async (email, password, name) => {
+  const signUp = async (email, password, name, role = 'client', address = '', phone = '') => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
@@ -73,18 +97,19 @@ export function AuthProvider({ children }) {
       // Update display name
       await updateProfile(firebaseUser, { displayName: name });
       
-      // Create user profile in Firestore
+      // Create user profile in Firestore with role
       const userProfile = {
         name,
         email,
-        phone: '',
-        address: '',
+        phone: phone || '',
+        address: address || '',
+        role: role, // 'client' or 'owner'
         createdAt: new Date().toISOString(),
       };
 
       try {
         const token = await firebaseUser.getIdToken();
-        await fetch(`${BACKEND_URL}/api/users/${firebaseUser.uid}`, {
+        const createRes = await fetch(`${BACKEND_URL}/api/users/${firebaseUser.uid}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -92,6 +117,14 @@ export function AuthProvider({ children }) {
           },
           body: JSON.stringify(userProfile),
         });
+        
+        if (createRes.ok) {
+          console.log('User profile created successfully during signup');
+          // Set the profile immediately to avoid fetch race condition
+          setUserProfile(userProfile);
+        } else {
+          console.warn('Failed to create user profile during signup:', await createRes.text());
+        }
       } catch (e) {
         console.warn('Failed to create user profile on backend:', e);
       }

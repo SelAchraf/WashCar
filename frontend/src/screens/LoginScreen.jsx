@@ -135,18 +135,6 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
           <View style={styles.form}>
             {!isLogin && (
               <>
-                <View style={styles.inputContainer}>
-                  <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder={role === 'owner' ? 'Nom de lavage' : 'Nom complet'}
-                    placeholderTextColor="#9CA3AF"
-                    value={name}
-                    onChangeText={setName}
-                    autoCapitalize="words"
-                  />
-                </View>
-
                 <View style={styles.roleContainer}>
                   <Text style={styles.roleLabel}>Type de compte</Text>
                   <View style={styles.roleButtons}>
@@ -177,6 +165,18 @@ Consultez VERIFY_FIREBASE_SETUP.md pour plus de détails.`;
                       </Text>
                     </Pressable>
                   </View>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder={role === 'owner' ? 'Nom de lavage' : 'Nom complet'}
+                    placeholderTextColor="#9CA3AF"
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                  />
                 </View>
 
                 {role === 'owner' && (

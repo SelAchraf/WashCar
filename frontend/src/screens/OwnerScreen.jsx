@@ -475,6 +475,16 @@ export default function OwnerScreen() {
   });
   const [newSlotStart, setNewSlotStart] = useState('');
   const [newSlotEnd, setNewSlotEnd] = useState('');
+  
+  // Error states for inline validation
+  const [errors, setErrors] = useState({
+    serviceType: '',
+    description: '',
+    prices: '',
+    timeSlots: '',
+    slotStart: '',
+    slotEnd: ''
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -589,6 +599,16 @@ export default function OwnerScreen() {
   };
 
   const openServiceModal = (service = null) => {
+    // Clear all errors when opening modal
+    setErrors({
+      serviceType: '',
+      description: '',
+      prices: '',
+      timeSlots: '',
+      slotStart: '',
+      slotEnd: ''
+    });
+    
     if (service) {
       setEditingService(service);
       setFormData({ 
@@ -612,9 +632,28 @@ export default function OwnerScreen() {
   };
 
   const saveService = async () => {
-    if (!formData.name.trim()) {
-      Alert.alert('Erreur', 'Le type de service est requis');
-      return;
+    // Clear previous errors
+    setErrors({
+      serviceType: '',
+      description: '',
+      prices: '',
+      timeSlots: '',
+      slotStart: '',
+      slotEnd: ''
+    });
+    
+    let hasError = false;
+    
+    // Validate service type
+    if (!formData.name || !formData.name.trim()) {
+      setErrors(prev => ({ ...prev, serviceType: 'Le type de service est requis' }));
+      hasError = true;
+    }
+    
+    // Validate description
+    if (!formData.description || !formData.description.trim()) {
+      setErrors(prev => ({ ...prev, description: 'La description du service est requise' }));
+      hasError = true;
     }
     
     // Get applicable vehicles for this service type
@@ -626,13 +665,17 @@ export default function OwnerScreen() {
     });
     
     if (!hasApplicablePrice) {
-      Alert.alert('Erreur', 'Veuillez définir au moins un prix pour ce type de service');
-      return;
+      setErrors(prev => ({ ...prev, prices: 'Veuillez définir au moins un prix pour ce type de service' }));
+      hasError = true;
     }
     
     // Validate that there's at least one time slot
-    if (formData.timeSlots.length === 0) {
-      Alert.alert('Erreur', 'Veuillez ajouter au moins un créneau horaire');
+    if (!formData.timeSlots || formData.timeSlots.length === 0) {
+      setErrors(prev => ({ ...prev, timeSlots: 'Veuillez ajouter au moins un créneau horaire' }));
+      hasError = true;
+    }
+    
+    if (hasError) {
       return;
     }
     
@@ -677,10 +720,28 @@ export default function OwnerScreen() {
   };
 
   const addTimeSlot = () => {
-    if (!newSlotStart.trim() || !newSlotEnd.trim()) {
-      Alert.alert('Erreur', 'Veuillez remplir l\'heure de début et de fin');
+    // Clear previous slot errors
+    setErrors(prev => ({ ...prev, slotStart: '', slotEnd: '' }));
+    
+    let hasError = false;
+    
+    // Validate that both start and end times are filled
+    if (!newSlotStart || newSlotStart.trim() === '') {
+      setErrors(prev => ({ ...prev, slotStart: 'Veuillez entrer l\'heure de début' }));
+      hasError = true;
+    }
+    
+    if (!newSlotEnd || newSlotEnd.trim() === '') {
+      setErrors(prev => ({ ...prev, slotEnd: 'Veuillez entrer l\'heure de fin' }));
+      hasError = true;
+    }
+    
+    if (hasError) {
       return;
     }
+    
+    // Clear timeSlots error when adding a slot
+    setErrors(prev => ({ ...prev, timeSlots: '' }));
     
     const newSlot = {
       id: Date.now().toString(),
@@ -706,26 +767,37 @@ export default function OwnerScreen() {
   };
 
   const deleteService = async (id) => {
-    Alert.alert('Confirmer', 'Supprimer ce service ?', [
-      { text: 'Annuler' },
-      {
-        text: 'Supprimer',
-        onPress: async () => {
-          try {
-            const token = await user.getIdToken();
-            const res = await fetch(`${BACKEND_URL}/api/owner/services/${id}`, {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) throw new Error(await res.text());
-            setServices(svcs => svcs.filter(s => s.id !== id));
-          } catch (err) {
-            console.error('Failed to delete service', err);
-            Alert.alert('Erreur', 'Impossible de supprimer le service');
-          }
-        },
-      },
-    ]);
+    console.log('Delete service called with id:', id);
+    
+    // Use native confirm for better cross-platform support
+    const confirmed = confirm('Êtes-vous sûr de vouloir supprimer ce service ?');
+    
+    if (!confirmed) {
+      console.log('Delete cancelled');
+      return;
+    }
+    
+    console.log('Delete confirmed, starting deletion...');
+    try {
+      const token = await user.getIdToken();
+      console.log('Token obtained, making DELETE request...');
+      const res = await fetch(`${BACKEND_URL}/api/owner/services/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Response status:', res.status);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Delete failed:', res.status, errorText);
+        throw new Error(errorText);
+      }
+      console.log('Delete successful, updating UI...');
+      setServices(svcs => svcs.filter(s => s.id !== id));
+      Alert.alert('Succès', 'Service supprimé avec succès');
+    } catch (err) {
+      console.error('Failed to delete service', err);
+      Alert.alert('Erreur', 'Impossible de supprimer le service');
+    }
   };
 
   const isLoading = activeTab === 'bookings' ? loadingBookings : loadingServices;
@@ -886,15 +958,18 @@ export default function OwnerScreen() {
               </Text>
               <Ionicons name="chevron-down" size={20} color="#6B7280" />
             </Pressable>
+            {errors.serviceType ? <Text style={styles.errorText}>{errors.serviceType}</Text> : null}
             
             <Text style={styles.label}>Description</Text>
             <TextInput 
               style={[styles.input, { minHeight: 80 }]} 
               placeholder="Description du service" 
+              placeholderTextColor="#9CA3AF"
               value={String(formData.description || '')} 
               onChangeText={(d) => setFormData({ ...formData, description: d })} 
               multiline 
             />
+            {errors.description ? <Text style={styles.errorText}>{errors.description}</Text> : null}
 
             <Text style={[styles.label, { marginTop: 20, fontSize: 16, color: '#1E40AF' }]}>Prix par type de véhicule (DA)</Text>
             
@@ -906,48 +981,51 @@ export default function OwnerScreen() {
                 </Text>
               </View>
             ) : (
-              <View style={styles.pricesRowContainer}>
-                {getApplicableVehicles(formData.name).includes('motorcycle') && (
-                  <View style={styles.priceItemContainer}>
-                    <Ionicons name="bicycle-outline" size={28} color="#1E40AF" />
-                    <Text style={styles.vehicleLabel}>Moto</Text>
-                    <TextInput 
-                      style={styles.priceInputCompact} 
-                      placeholder="0" 
-                      value={String(formData.prices.motorcycle || '')} 
-                      onChangeText={(p) => setFormData({ ...formData, prices: { ...formData.prices, motorcycle: p } })} 
-                      keyboardType="numeric" 
-                    />
-                  </View>
-                )}
+              <View>
+                <View style={styles.pricesRowContainer}>
+                  {getApplicableVehicles(formData.name).includes('motorcycle') && (
+                    <View style={styles.priceItemContainer}>
+                      <Ionicons name="bicycle-outline" size={28} color="#1E40AF" />
+                      <Text style={styles.vehicleLabel}>Moto</Text>
+                      <TextInput 
+                        style={styles.priceInputCompact} 
+                        placeholder="0" 
+                        value={String(formData.prices.motorcycle || '')} 
+                        onChangeText={(p) => setFormData({ ...formData, prices: { ...formData.prices, motorcycle: p } })} 
+                        keyboardType="numeric" 
+                      />
+                    </View>
+                  )}
 
-                {getApplicableVehicles(formData.name).includes('car') && (
-                  <View style={styles.priceItemContainer}>
-                    <Ionicons name="car-outline" size={28} color="#1E40AF" />
-                    <Text style={styles.vehicleLabel}>Voiture</Text>
-                    <TextInput 
-                      style={styles.priceInputCompact} 
-                      placeholder="0" 
-                      value={String(formData.prices.car || '')} 
-                      onChangeText={(p) => setFormData({ ...formData, prices: { ...formData.prices, car: p } })} 
-                      keyboardType="numeric" 
-                    />
-                  </View>
-                )}
+                  {getApplicableVehicles(formData.name).includes('car') && (
+                    <View style={styles.priceItemContainer}>
+                      <Ionicons name="car-outline" size={28} color="#1E40AF" />
+                      <Text style={styles.vehicleLabel}>Voiture</Text>
+                      <TextInput 
+                        style={styles.priceInputCompact} 
+                        placeholder="0" 
+                        value={String(formData.prices.car || '')} 
+                        onChangeText={(p) => setFormData({ ...formData, prices: { ...formData.prices, car: p } })} 
+                        keyboardType="numeric" 
+                      />
+                    </View>
+                  )}
 
-                {getApplicableVehicles(formData.name).includes('truck') && (
-                  <View style={styles.priceItemContainer}>
-                    <Ionicons name="bus-outline" size={28} color="#1E40AF" />
-                    <Text style={styles.vehicleLabel}>Camion</Text>
-                    <TextInput 
-                      style={styles.priceInputCompact} 
-                      placeholder="0" 
-                      value={String(formData.prices.truck || '')} 
-                      onChangeText={(p) => setFormData({ ...formData, prices: { ...formData.prices, truck: p } })} 
-                      keyboardType="numeric" 
-                    />
-                  </View>
-                )}
+                  {getApplicableVehicles(formData.name).includes('truck') && (
+                    <View style={styles.priceItemContainer}>
+                      <Ionicons name="bus-outline" size={28} color="#1E40AF" />
+                      <Text style={styles.vehicleLabel}>Camion</Text>
+                      <TextInput 
+                        style={styles.priceInputCompact} 
+                        placeholder="0" 
+                        value={String(formData.prices.truck || '')} 
+                        onChangeText={(p) => setFormData({ ...formData, prices: { ...formData.prices, truck: p } })} 
+                        keyboardType="numeric" 
+                      />
+                    </View>
+                  )}
+                </View>
+                {errors.prices ? <Text style={styles.errorText}>{errors.prices}</Text> : null}
               </View>
             )}
 
@@ -957,8 +1035,9 @@ export default function OwnerScreen() {
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.timeSlotLabel}>Début</Text>
                 <TextInput 
-                  style={styles.timeInput} 
+                  style={[styles.timeInput, errors.slotStart && styles.inputError]} 
                   placeholder="08:00" 
+                  placeholderTextColor="#9CA3AF"
                   value={newSlotStart} 
                   onChangeText={setNewSlotStart}
                 />
@@ -966,8 +1045,9 @@ export default function OwnerScreen() {
               <View style={{ flex: 1, marginLeft: 8 }}>
                 <Text style={styles.timeSlotLabel}>Fin</Text>
                 <TextInput 
-                  style={styles.timeInput} 
+                  style={[styles.timeInput, errors.slotEnd && styles.inputError]} 
                   placeholder="12:00" 
+                  placeholderTextColor="#9CA3AF"
                   value={newSlotEnd} 
                   onChangeText={setNewSlotEnd}
                 />
@@ -976,6 +1056,7 @@ export default function OwnerScreen() {
                 <Ionicons name="add" size={24} color="#FFFFFF" />
               </Pressable>
             </View>
+            {errors.timeSlots ? <Text style={styles.errorText}>{errors.timeSlots}</Text> : null}
 
             {formData.timeSlots.length > 0 && (
               <View style={styles.slotsListContainer}>
@@ -1642,5 +1723,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#374151',
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 2,
+  },
+  inputError: {
+    borderColor: '#DC2626',
+    borderWidth: 2,
   },
 });

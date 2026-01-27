@@ -22,9 +22,9 @@
       "bundler": "metro"
     },
     "scheme": "washcar",
-    "sdkVersion": "51.0.0",
-    "primaryColor": "#1E40AF"
+    "primaryColor": "#1E40AF",
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
-
-
